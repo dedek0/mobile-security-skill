@@ -1,6 +1,6 @@
 # Prompt Examples
 
-Copy-paste starting points, organized by what you actually want to happen. Each one is a real prompt you could type to Claude Code once the skill is installed (see the [README](../README.md#installation)). It's plain language, not command syntax. The skill's own description is written to trigger on this kind of request automatically; you don't need to name any agent by hand.
+Copy-paste starting points, organized by what you actually want to happen. Each one is a real prompt you could type to Claude Code or opencode once the skill is installed (see the [README](../README.md#installation)). It's plain language, not command syntax. The skill's own description is written to trigger on this kind of request automatically; you don't need to name any agent by hand.
 
 Every example below still has to clear **Step 0** first: the skill will ask you to confirm the target is your own app, a documented engagement, or a CTF/training target before it touches anything. The prompts that already state this explicitly will sail through that gate; the ones that don't will just get asked once.
 

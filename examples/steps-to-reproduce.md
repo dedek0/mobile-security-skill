@@ -259,3 +259,28 @@ Every file referenced above is committed in this repo, not reconstructed for thi
 Four of those files, `target-profile.md`, `exploitation/AND-MAN-003.md`, `exploitation/AND-MAN-001.md`, and the dynamic session log, are left exactly as the agents wrote them, including their own punctuation style (they predate, and don't match, the em-dash-free house style the rest of this repo's hand-edited prose follows). That's deliberate: they're being shown as real evidence, not as documentation, so they weren't touched up after the fact. `findings.jsonl` and both report files, by contrast, were brought in line with that house style after the agents produced them, since a deliverable report is documentation meant to be read by someone else, not a raw evidentiary transcript.
 
 What this walkthrough does **not** claim: findings AND-MAN-002, 004, 005, and 006 were produced by the real manifest auditor shown in Step 5, and received real dynamic-confirmation attempts in Step 7, but were not run through the adversarial panel. They remain at `status: "candidate"` in the committed `findings.jsonl`, honestly, and `final-report.md`/`.html` both label them `Candidate` rather than implying they were panel-reviewed. Running every finding through a full panel for a demo fixture wasn't necessary to show the mechanism; two independent findings (AND-MAN-001 and AND-MAN-003), run through the panel separately and landing on the same Potential/High outcome for two structurally different reasons, demonstrate it end to end without needing all six.
+
+---
+
+## Step 10: the same toolkit in opencode, for real
+
+**Tool used:** opencode v2.0.32 — its `subagent` tool (`agent: mobile-recon-triage`), its `skill` tool, and `opencode debug agents` / `opencode api get /api/agent` for the discovery and permission checks.
+
+**Command used:**
+
+```bash
+# 1. opencode-native agent definitions, generated from the canonical agents/*.md
+python3 scripts/sync_opencode_agents.py
+
+# 2. install the skill and the 18 agents for opencode
+python3 scripts/install.py --target opencode
+
+# 3. what opencode actually registered
+opencode debug agents
+```
+
+**Output:** `opencode debug agents` listed all 18 specialists alongside opencode's 7 built-ins, and the skill was advertised to the model as `mobile-security-skill` and loaded through the `skill` tool. The permission dump for `exploitability-skeptic` came back as `read`/`grep`/`glob`/`edit` allow, `shell` deny, `webfetch`/`websearch`/`subagent`/`question` deny — which is the opencode rendering of the Claude Code grant `tools: Read, Grep, Glob, Write`, where the absence of `Bash` is what keeps the panel from generating its own evidence.
+
+**What was observed:** Phase 1 was then actually run in opencode against the same fixture, end to end: `mobile-recon-triage` was spawned with the `subagent` tool, read the decoded manifest, ran `apktool`/`jadx`/`aapt2` on it (they failed, and it said so in its output rather than pretending the tools were missing), and wrote a 16 KB `target-profile.md` with all thirteen template sections filled in. Both permission paths the toolkit depends on therefore work in opencode: `shell` for the decompilation/instrumentation step, and the `edit` action for writing findings — the latter being the one mapping worth spelling out, since opencode has no separate `write` tool and Claude Code's `Write` grant becomes `edit` there. The engagement directory it produced is gitignored exactly as intended.
+
+**What this step does not claim:** this was a Phase 1 smoke test, not a second full audit. The adversarial panel, the report synthesis and the dynamic phase were not re-run in opencode here; what was proven is that the harness differences (agent file format, tool grant, spawn call) are bridged, so the pipeline itself is unchanged by the harness.

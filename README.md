@@ -1,14 +1,15 @@
 <p align="center">
-  <img src="assets/hero.svg" alt="Mobile Security Skill: 18 Claude Code agents and an adversarial exploitation panel for Android and iOS mobile application security audits" width="900" />
+  <img src="assets/hero.svg" alt="Mobile Security Skill: 18 specialist agents and an adversarial exploitation panel for Android and iOS mobile application security audits" width="900" />
 </p>
 
 # Mobile Security Skill
 
-**Claude Code agents for Android & iOS mobile application security audits, OWASP MASVS/MASTG-aligned, with adversarial exploitation confirmation.**
+**Agent harnesses for Android & iOS mobile application security audits, OWASP MASVS/MASTG-aligned, with adversarial exploitation confirmation. Runs on Claude Code and opencode.**
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/harshdhamaniya/mobile-security-skill?color=1E40AF&label=release" alt="Latest release">
   <img src="https://img.shields.io/badge/Claude_Code-Compatible-D97757?logo=anthropic&logoColor=white" alt="Claude Code Compatible">
+  <img src="https://img.shields.io/badge/OpenCode-Compatible-F59E0B" alt="OpenCode Compatible">
   <img src="https://img.shields.io/badge/Codex-SKILL.md-111827" alt="Codex Compatible (SKILL.md)">
   <img src="https://img.shields.io/badge/Claude-Skills-8A63D2" alt="Claude Skills">
   <img src="https://img.shields.io/badge/License-MIT-22C55E.svg" alt="MIT License">
@@ -16,7 +17,7 @@
   <img src="https://img.shields.io/badge/PRs-welcome-F59E0B.svg" alt="PRs Welcome">
 </p>
 
-A complete mobile application security assessment toolkit for Claude Code: one orchestrating **Skill** and **18 specialist subagents**, grounded in an OWASP MASTG-style reference checklist, that ends in an **adversarial exploitation panel**. A prosecutor agent and independent skeptic agents have to actually try to break each other's case before anything is allowed to be reported as **Confirmed**.
+A complete mobile application security assessment toolkit: one orchestrating **Skill** and **18 specialist subagents**, grounded in an OWASP MASTG-style reference checklist, that ends in an **adversarial exploitation panel**. A prosecutor agent and independent skeptic agents have to actually try to break each other's case before anything is allowed to be reported as **Confirmed**. It runs unchanged in Claude Code and in opencode: the skill is a plain `SKILL.md`, and the repo ships the 18 agents in both harnesses' formats.
 
 It covers Android and iOS manifest/plist/entitlements, local storage and cryptography, taint analysis (source → sink → sanitizer), WebView/OAuth/OIDC/deep-links/clipboard, Android IPC and UI-layer attacks, iOS platform attacks, anti-tamper/resilience (root/jailbreak/pinning/debugger/Frida detection), network and backend API weaknesses, supply-chain and cross-platform-framework issues (Flutter, React Native, Xamarin, Unity, Cordova, KMP), and business-logic abuse.
 
@@ -26,7 +27,9 @@ It covers Android and iOS manifest/plist/entitlements, local storage and cryptog
 
 ## Installation
 
-### Option A: Claude Code plugin (recommended)
+The toolkit runs in **Claude Code** and in **opencode**. The skill is one file plus a `references/` folder; the 18 specialists are one Markdown file each. The only difference between harnesses is the agent file format, and this repo ships both renderings.
+
+### Option A: Claude Code plugin (recommended for Claude Code)
 ```bash
 git clone https://github.com/harshdhamaniya/mobile-security-skill.git
 ```
@@ -51,6 +54,53 @@ mkdir -p ~/.claude/agents
 cp agents/*.md ~/.claude/agents/
 ```
 Restart Claude Code (or start a new session) so it picks up the new skill and agents. To scope this to one project instead of globally, copy into `.claude/skills/` and `.claude/agents/` inside that project's root instead of `~/.claude/`.
+
+### Option C: opencode
+
+```bash
+git clone https://github.com/harshdhamaniya/mobile-security-skill.git
+cd mobile-security-skill
+python3 scripts/install.py --target opencode
+```
+That installs the skill into `~/.config/opencode/skills/mobile-security-skill/` and the 18 agents into `~/.config/opencode/agents/`, in opencode's own agent format (generated from the canonical Claude Code definitions). Start a new opencode session afterwards and the skill shows up as `mobile-security-skill`.
+
+Useful variations:
+```bash
+# Install for one project instead of the whole user account
+python3 scripts/install.py --target opencode --scope project --project /path/to/your/app
+
+# Install for both harnesses at once
+python3 scripts/install.py --target both
+
+# See what would happen, change nothing
+python3 scripts/install.py --target opencode --dry-run
+```
+
+Working inside this repo itself? Nothing to install: `opencode.jsonc` points opencode at `skills/` and `.opencode/agents/` holds the opencode-native agent definitions, so `opencode` in the repo root already has the whole toolkit.
+
+### One install, both harnesses
+
+`~/.claude/skills/` is a location opencode also reads, so copying just the skill there makes it available in Claude Code *and* opencode at once:
+
+```bash
+mkdir -p ~/.claude/skills
+cp -r skills/mobile-security-skill ~/.claude/skills/   # both harnesses
+cp agents/*.md ~/.claude/agents/                        # Claude Code only
+python3 scripts/install.py --target opencode            # opencode agents only
+```
+
+### Tool grants: how the two harnesses map
+
+Claude Code agents declare an allowlist of tools (`tools: Read, Grep, Glob, Bash, Write`); opencode declares ordered `permissions` rules. `scripts/sync_opencode_agents.py` converts one into the other, so a specialist behaves the same in both:
+
+| Claude Code `tools:` | opencode permission | Note |
+|---|---|---|
+| `Read` | `read` allow | same |
+| `Grep` | `grep` allow | same |
+| `Glob` | `glob` allow | same |
+| `Bash` | `shell` allow | denied for the prosecutor, the skeptics and the report synthesizer, exactly as in Claude Code |
+| `Write` | `edit` allow | opencode's `edit` action also covers `write`/`patch`, so a Claude Code grant of "Write but not Edit" cannot be expressed exactly; the "never modify the target source" rule stays in the agent body |
+| not granted | `webfetch`, `websearch`, `subagent`, `question` deny | keeps the grant equivalent to Claude Code's |
 
 ### Dependencies
 The agents degrade gracefully, but you'll get far more out of them with these on `PATH`:
@@ -101,6 +151,11 @@ Mobile Security Skill/
 ├── README.md                              # you are here
 ├── LICENSE                                # MIT
 ├── .claude-plugin/plugin.json             # plugin manifest (optional install path)
+├── opencode.jsonc                         # opencode config: points at skills/
+├── .opencode/agents/                      # 18 agents in opencode format (generated)
+├── scripts/
+│   ├── install.py                         # install the toolkit into claude / opencode
+│   └── sync_opencode_agents.py            # regenerate .opencode/agents/ from agents/
 ├── skills/mobile-security-skill/
 │   ├── SKILL.md                           # the orchestrating skill (read this first)
 │   └── references/
@@ -113,13 +168,15 @@ Mobile Security Skill/
 │       ├── severity-rating.md             # the adversarial confirmation decision rule
 │       ├── report-template.md             # final report skeleton (markdown)
 │       └── report-template.html           # final report skeleton (styled, self-contained HTML)
-├── agents/                                # 18 subagent definitions, one per table row above
+├── agents/                                # 18 subagent definitions (canonical, Claude Code format)
 └── examples/
     ├── sample-walkthrough.md              # one finding traced through the whole pipeline, narrated
     ├── steps-to-reproduce.md              # a real run: real commands, real agent output, committed evidence
     ├── prompts.md                         # copy-paste prompt library for every use case
     └── fixtures/vulnbank-demo/            # the synthetic fixture + committed engagement output used above
 ```
+
+`agents/*.md` is the single source of truth for the 18 specialists. `.opencode/agents/*.md` is generated from it by `scripts/sync_opencode_agents.py` (run it after editing an agent; `--check` fails if the generated copies drifted). Never edit the generated copies by hand.
 
 ## Usage
 
@@ -192,6 +249,9 @@ What this toolkit deliberately **will not** do, by design: weaponize a confirmed
 **What is a "Claude Skill" and how is this different from a normal prompt?**
 A [Claude Skill](https://docs.claude.com/en/docs/claude-code/skills) is a packaged, reusable set of instructions Claude Code loads on demand: here, the mobile app security audit methodology, five reference checklists, and the rules for running 18 specialist agents plus an adversarial exploitation panel. You ask in plain language ("audit this APK"); the skill handles the rest instead of you re-explaining the methodology every session.
 
+**Does it work in opencode, or only in Claude Code?**
+Both. opencode reads the same `SKILL.md` (it discovers `skills/`, `.opencode/skills/`, `.claude/skills/` and `~/.claude/skills/`), and this repo ships the 18 agents in opencode's format too: `mode: subagent` plus `permissions` rules instead of Claude Code's `tools:` allowlist. `scripts/install.py --target opencode` installs both; `scripts/sync_opencode_agents.py` regenerates the opencode copies from the canonical Claude Code ones. The pipeline, the checklists, the finding schema, the report templates and the adversarial panel are identical in both — only the spawn call differs (`subagent_type:` in Claude Code, `agent:` in opencode).
+
 **Can this replace MobSF, Frida, Burp Suite, or a professional mobile penetration test?**
 No. It orchestrates the same categories of technique those tools perform (static decompilation, taint analysis, Frida instrumentation, SSL-pinning-bypass MITM) using AI agents to reason about reachability and, where available, actually run them. It's a force multiplier for someone who already understands mobile application security, not a replacement for proper tooling, a human reviewer, or a licensed penetration test where one is contractually or regulatorily required.
 
@@ -213,6 +273,13 @@ A single pass over a codebase asking for "bugs" tends to both over-report (patte
 ## Contributing
 
 Issues and PRs welcome: new checklist IDs as platforms evolve, additional framework-specific coverage, sharper adversarial-panel prompts, or corrections to anything that over- or under-claims. Keep new/changed agent files in the same format: YAML frontmatter (`name`, `description`, `tools`), a grounded reference to the specific checklist IDs it covers, and explicit output-schema compliance with `finding-schema.md`.
+
+`agents/*.md` is canonical. After changing one, regenerate the opencode rendering and make sure it is committed:
+
+```bash
+python3 scripts/sync_opencode_agents.py          # regenerate .opencode/agents/
+python3 scripts/sync_opencode_agents.py --check  # what CI runs
+```
 
 ## Connect
 

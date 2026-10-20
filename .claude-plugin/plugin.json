@@ -23,6 +23,7 @@
     "ipa",
     "claude-code",
     "claude-skills",
+    "opencode",
     "ai-agents"
   ],
   "license": "MIT"
