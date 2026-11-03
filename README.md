@@ -55,6 +55,12 @@ cp agents/*.md ~/.claude/agents/
 ```
 Restart Claude Code (or start a new session) so it picks up the new skill and agents. To scope this to one project instead of globally, copy into `.claude/skills/` and `.claude/agents/` inside that project's root instead of `~/.claude/`.
 
+The installer below performs the same copy, so you can use it instead of the manual commands:
+
+```bash
+python3 scripts/install.py --target claude
+```
+
 ### Option C: opencode
 
 ```bash
@@ -77,6 +83,23 @@ python3 scripts/install.py --target opencode --dry-run
 ```
 
 Working inside this repo itself? Nothing to install: `opencode.jsonc` points opencode at `skills/` and `.opencode/agents/` holds the opencode-native agent definitions, so `opencode` in the repo root already has the whole toolkit.
+
+### Installing additional local skill bundles
+
+`skills/` can hold more than the published `mobile-security-skill` bundle. The installer installs `mobile-security-skill` by default; use `--all-skills` to install every bundle present (including any local bundle you keep out of the repository), or name them explicitly with `--skill`:
+
+```bash
+# Install every skill bundle under skills/
+python3 scripts/install.py --target claude --all-skills
+
+# Install a specific set, for one or both harnesses
+python3 scripts/install.py --target both --skill mobile-security-skill --skill my-local-skill
+
+# Preview without copying anything
+python3 scripts/install.py --target claude --all-skills --dry-run
+```
+
+The installer only copies from `skills/` into the harness's skill directory; it never adds a local bundle to this repository.
 
 ### One install, both harnesses
 

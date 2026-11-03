@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Install the mobile-security-skill toolkit into a supported agent harness.
+"""Install skill bundles and their specialist agents into a supported agent harness.
 
 Two harnesses are supported, and the toolkit works in both:
 
-  claude    Claude Code   skill -> ~/.claude/skills/mobile-security-skill/
+  claude    Claude Code   skills -> ~/.claude/skills/<skill>/
                             agents -> ~/.claude/agents/*.md
 
-  opencode  opencode v2   skill -> ~/.config/opencode/skills/mobile-security-skill/
+  opencode  opencode v2   skills -> ~/.config/opencode/skills/<skill>/
                             agents -> ~/.config/opencode/agents/*.md  (opencode-native
                             frontmatter, generated from the canonical definitions)
+
+By default the `mobile-security-skill` bundle is installed. Any other bundle
+under ``skills/`` can be selected with ``--skill``, or installed all at once
+with ``--all-skills``. Extra bundles may be local-only and are never copied
+into this repository by the installer.
 
 The opencode agent files are generated on the fly from ``agents/*.md`` (see
 ``sync_opencode_agents.py``), so the canonical Claude Code definitions stay the
@@ -18,6 +23,8 @@ Usage:
     python3 scripts/install.py --target opencode
     python3 scripts/install.py --target claude
     python3 scripts/install.py --target both
+    python3 scripts/install.py --target claude --all-skills
+    python3 scripts/install.py --target claude --skill mobile-security-skill --skill my-local-skill
     python3 scripts/install.py --target opencode --scope project --project /path/to/repo
     python3 scripts/install.py --target both --dry-run
 """
@@ -34,49 +41,77 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sync_opencode_agents import generate  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILL_SOURCE = REPO_ROOT / "skills" / "mobile-security-skill"
-SKILL_ID = "mobile-security-skill"
+SKILLS_DIR = REPO_ROOT / "skills"
+DEFAULT_SKILL_ID = "mobile-security-skill"
+
+
+def discover_skills() -> dict[str, Path]:
+    """Return {skill id: bundle path} for every SKILL.md-bearing directory."""
+    if not SKILLS_DIR.is_dir():
+        raise SystemExit(f"error: skills directory not found at {SKILLS_DIR}")
+    skills: dict[str, Path] = {}
+    for path in sorted(SKILLS_DIR.iterdir()):
+        if path.is_dir() and (path / "SKILL.md").is_file():
+            skills[path.name] = path
+    if not skills:
+        raise SystemExit(f"error: no skill bundles found in {SKILLS_DIR}")
+    return skills
+
+
+def resolve_skills(names: list[str], all_skills: bool) -> list[tuple[str, Path]]:
+    """Resolve the requested skill ids to their bundle paths, preserving order."""
+    if all_skills and names:
+        raise SystemExit("error: use either --skill or --all-skills, not both")
+
+    available = discover_skills()
+    selected = sorted(available) if all_skills else (names or [DEFAULT_SKILL_ID])
+
+    missing = [name for name in selected if name not in available]
+    if missing:
+        known = ", ".join(sorted(available))
+        raise SystemExit(
+            f"error: unknown skill(s): {', '.join(missing)}\navailable skills: {known}"
+        )
+
+    return [(name, available[name]) for name in selected]
 
 
 def targets(scope: str, project: Path | None, home: Path) -> dict[str, dict[str, Path]]:
-    """Return, per harness, the directories to install the skill and agents into."""
+    """Return, per harness, the root directories for skills and agents."""
     if scope == "global":
         return {
             "claude": {
-                "skill": home / ".claude" / "skills" / SKILL_ID,
+                "skills": home / ".claude" / "skills",
                 "agents": home / ".claude" / "agents",
-                "skill_layout": "directory",
             },
             "opencode": {
-                "skill": home / ".config" / "opencode" / "skills" / SKILL_ID,
+                "skills": home / ".config" / "opencode" / "skills",
                 "agents": home / ".config" / "opencode" / "agents",
-                "skill_layout": "directory",
             },
         }
     root = (project or REPO_ROOT).resolve()
     return {
         "claude": {
-            "skill": root / ".claude" / "skills" / SKILL_ID,
+            "skills": root / ".claude" / "skills",
             "agents": root / ".claude" / "agents",
-            "skill_layout": "directory",
         },
         "opencode": {
-            "skill": root / ".opencode" / "skills" / SKILL_ID,
+            "skills": root / ".opencode" / "skills",
             "agents": root / ".opencode" / "agents",
-            "skill_layout": "directory",
         },
     }
 
 
-def install_skill(destination: Path, dry_run: bool) -> None:
-    """Copy the skill bundle (SKILL.md + references/) to its destination."""
+def install_skill(source: Path, destination: Path, dry_run: bool) -> None:
+    """Copy one skill bundle (SKILL.md + references/) to its destination."""
+    label = source.relative_to(REPO_ROOT)
     if dry_run:
-        print(f"  would copy {SKILL_SOURCE.relative_to(REPO_ROOT)} -> {destination}")
+        print(f"  would copy {label} -> {destination}")
         return
     if destination.exists():
         shutil.rmtree(destination)
-    shutil.copytree(SKILL_SOURCE, destination)
-    print(f"  installed skill -> {destination}")
+    shutil.copytree(source, destination)
+    print(f"  installed {source.name} -> {destination}")
 
 
 def install_agents(destination: Path, harness: str, dry_run: bool) -> None:
@@ -115,6 +150,26 @@ def main() -> int:
         help="which harness to install into (default: opencode)",
     )
     parser.add_argument(
+        "--skill",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help=(
+            "skill bundle under skills/ to install; repeat for more than one "
+            f"(default: {DEFAULT_SKILL_ID})"
+        ),
+    )
+    parser.add_argument(
+        "--all-skills",
+        action="store_true",
+        help="install every skill bundle found under skills/",
+    )
+    parser.add_argument(
+        "--no-agents",
+        action="store_true",
+        help="install only the skill bundle(s), without the specialist agents",
+    )
+    parser.add_argument(
         "--scope",
         choices=["global", "project"],
         default="global",
@@ -129,23 +184,23 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="show what would happen, change nothing")
     args = parser.parse_args()
 
-    if not SKILL_SOURCE.is_dir():
-        raise SystemExit(f"error: skill bundle not found at {SKILL_SOURCE}")
-
+    skills = resolve_skills(args.skill, args.all_skills)
     layout = targets(args.scope, args.project, Path.home())
     harnesses = ["claude", "opencode"] if args.target == "both" else [args.target]
 
     for harness in harnesses:
         paths = layout[harness]
-        print(f"[{harness}] scope={args.scope}")
-        install_skill(paths["skill"], args.dry_run)
-        install_agents(paths["agents"], harness, args.dry_run)
+        print(f"[{harness}] scope={args.scope} skills={', '.join(name for name, _ in skills)}")
+        for name, source in skills:
+            install_skill(source, paths["skills"] / name, args.dry_run)
+        if not args.no_agents:
+            install_agents(paths["agents"], harness, args.dry_run)
 
     print("\nNext: start a new session in your harness (or restart it) so it picks the changes up.")
     if "opencode" in harnesses:
-        print("opencode: the skill is advertised as `mobile-security-skill`; ask for an audit in plain language.")
+        print("opencode: skills are advertised by name; ask for an audit in plain language.")
     if "claude" in harnesses:
-        print("claude: the skill is advertised as `mobile-security-skill`; ask for an audit in plain language.")
+        print("claude: skills are advertised by name; ask for an audit in plain language.")
 
     return 0
 
