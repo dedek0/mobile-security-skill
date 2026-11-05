@@ -176,9 +176,11 @@ Mobile Security Skill/
 ├── .claude-plugin/plugin.json             # plugin manifest (optional install path)
 ├── opencode.jsonc                         # opencode config: points at skills/
 ├── .opencode/agents/                      # 18 agents in opencode format (generated)
+├── .github/workflows/validate-findings.yml  # CI: validator self-test + demo engagement check
 ├── scripts/
 │   ├── install.py                         # install the toolkit into claude / opencode
-│   └── sync_opencode_agents.py            # regenerate .opencode/agents/ from agents/
+│   ├── sync_opencode_agents.py            # regenerate .opencode/agents/ from agents/
+│   └── validate_findings.py               # contract check for an engagement's findings.jsonl (warns only)
 ├── skills/mobile-security-skill/
 │   ├── SKILL.md                           # the orchestrating skill (read this first)
 │   └── references/
@@ -200,6 +202,19 @@ Mobile Security Skill/
 ```
 
 `agents/*.md` is the single source of truth for the 18 specialists. `.opencode/agents/*.md` is generated from it by `scripts/sync_opencode_agents.py` (run it after editing an agent; `--check` fails if the generated copies drifted). Never edit the generated copies by hand.
+
+### Checking an engagement's findings
+
+`scripts/validate_findings.py` checks an engagement's `findings/findings.jsonl` against `finding-schema.md` and the Confirmed rule in `severity-rating.md`. It checks the contract only: it does not judge whether a finding is true. It prints `WARN` lines and always exits 0, so it never blocks report generation.
+
+```bash
+python3 scripts/validate_findings.py engagement-<slug>/   # check one engagement
+python3 scripts/validate_findings.py --self-test          # check the validator itself
+```
+
+Warnings cover invalid IDs, statuses and evidence types, `ref_ids` that do not exist in the references, missing artifacts, `confirmed` without a panel transcript or dynamic evidence, and candidates that share a fingerprint. Treat each warning as something to fix or to justify in the report's Appendix C.
+
+CI (`.github/workflows/validate-findings.yml`) runs the self-test and validates the committed demo engagement on every push and pull request. Real engagements are gitignored and are not checked in CI.
 
 ## Usage
 
@@ -301,8 +316,10 @@ Issues and PRs welcome: new checklist IDs as platforms evolve, additional framew
 
 ```bash
 python3 scripts/sync_opencode_agents.py          # regenerate .opencode/agents/
-python3 scripts/sync_opencode_agents.py --check  # what CI runs
+python3 scripts/sync_opencode_agents.py --check  # drift check; CI does not run this yet
 ```
+
+CI runs the findings validator on every push and pull request (see "Checking an engagement's findings" above).
 
 ## Connect
 
