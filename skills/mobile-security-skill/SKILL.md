@@ -28,6 +28,19 @@ If none of these is clearly true, stop and ask. Do not proceed on an assumption 
 
 This mirrors the reference material's own stance: `advanced-attacks.md` frames every check as "test your own app for exposure," and the parent system instructions require clear authorization context for dual-use security testing. This skill is read-and-report by design: specialist agents get `Read, Grep, Glob, Bash` for inspection/instrumentation, never blanket `Edit` on the target's source, and nothing here attempts to weaponize a finding beyond what's needed to prove it's real.
 
+## Step 0b: Gates for destructive actions and target identity (mandatory)
+
+These two rules apply to every phase, whatever tooling or extension is in use.
+
+**Destructive actions.** Any action that changes the state of the device or the target app beyond observation is destructive. Examples: uninstalling or reinstalling the app, clearing its data, replacing its signature, writing to its storage, or triggering a repackaged build. A destructive action runs only when all of these hold:
+1. The user has confirmed it in this session, and the confirmation is recorded in `engagement-<slug>/scope.md` (add a line `Destructive actions authorized: <what, on which device, and the user's confirmation>`).
+2. The device is recorded as disposable or a test device in `target-profile.md`.
+3. If the tool offers a two-step confirmation, both steps are completed. Never pass a confirmation token that was not produced in the same session.
+
+If any condition is missing, skip the action and record it as skipped in Appendix C of the report. Do not substitute a less-destructive action without telling the user.
+
+**Target identity.** Before any static finding is matched against dynamic evidence, record the same identity fields for both sides in `target-profile.md`: package or bundle id, `versionName`, `versionCode`, and the SHA-256 of the signing certificate, for the analyzed artifact and for the installed build. If any field differs, the two sides are not the same binary. Mark the cross-check as invalid in `target-profile.md` and in the affected findings' `notes`. Keep the evidence; do not delete or rewrite it.
+
 ## Resolving reference-doc paths for spawned agents
 
 Every phase below spawns agents that need one or more files from this skill's own `references/` folder (the directory next to this SKILL.md). Resolve the absolute path to that folder yourself before spawning anyone. You can do this reliably, since you loaded this very file, and a skill's bundled resources are always installed together with it, whatever the install method (Claude Code plugin, opencode, global `~/.claude/skills/mobile-security-skill/` or `~/.config/opencode/skills/mobile-security-skill/`, or project-scoped `.claude/skills/mobile-security-skill/` or `.opencode/skills/mobile-security-skill/`). Then give each spawned agent either that reference file's full content inline in its prompt, or the resolved absolute path to it, whichever is more convenient at the point you're spawning it.
@@ -44,6 +57,20 @@ The pipeline is identical in both harnesses; only the spawn call differs. Use wh
 | opencode | `subagent` tool, `agent: mobile-recon-triage` (the ID is the agent's file name) | several `subagent` calls in one message, or `background: true` for a detached run |
 
 In opencode, run the two independent skeptic instances of Phase 4 as two `subagent` calls issued together in the same message, not one call after the other: a serialized pair can see the other's verdict and stops being blind. Each skeptic writes its own `<finding_id>.skeptic-<label>.md` file, so parallel instances cannot clobber each other's output.
+
+## Complementary skill bundles
+
+Other skill bundles may sit next to this one to specialize it for a particular target or tool. This skill does not list them and does not depend on them. A complementary bundle may:
+- add reference documents for the existing specialists, which are passed to those specialists in addition to their normal references;
+- add evidence entries (`type: "static"` or `type: "dynamic"`) to findings that already exist;
+- provide an additional tool that a phase can call, as long as that tool follows Step 0b.
+
+A complementary bundle may not:
+- create new status values, finding-ID prefixes outside the `<PLATFORM>-<DOMAIN>-<NNN>` convention, or report templates;
+- change the rule that only the Phase 4 panel can produce `confirmed`;
+- skip Step 0 or Step 0b.
+
+When a bundle adds a reference document, it is passed to the specialist it was written for, with the same absolute-path rule as the core references.
 
 ## Pipeline
 
@@ -87,6 +114,8 @@ If no device is available, skip this phase and say so explicitly in the report (
 
 ### Phase 4: Adversarial exploitation panel
 This is the centerpiece: no finding becomes **Confirmed** without surviving it. Full decision rules live in `references/severity-rating.md`. Read that yourself before running this phase (you apply its rule in step 3 below), and pass its content or resolved absolute path to the prosecutor and every skeptic instance when you spawn them (see "Resolving reference-doc paths for spawned agents" above). Don't assume they can find it on their own.
+
+**Dedup before the panel.** Before Phase 4 starts, the orchestrating session groups `candidate` findings by fingerprint: the normalized `component` (or `category` if `component` is empty), the normalized `sink`, and the set of `ref_ids`. Two findings with the same fingerprint are one bug. Merge them into the record with the lower `finding_id` (it keeps its ID), union `ref_ids` and `evidence`, keep the higher `severity_initial` as the starting point, and note the merge in `notes` with both original IDs. Mark the other record `status: "informational"` with `final_rating_reason: "merged into <id>"`, so it is still on the record and is never reported twice. Merging on fingerprint is a first pass only; the Phase 5 synthesizer still checks for near-duplicates that the fingerprint missed.
 
 For every finding with `status: "candidate"`:
 0. You (the orchestrating session) set that finding's `status` to `"under-review"` in `findings.jsonl` the moment you hand it to the prosecutor. This is the only `findings.jsonl` write in this phase that happens before a verdict exists, so the file always reflects what's actively in flight.
