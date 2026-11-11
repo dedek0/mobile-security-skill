@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliação de Segurança de Aplicação Mobile: VulnBank Demo</title>
+<style>
+  :root {
+    --ink: #1a202c;
+    --ink-soft: #4a5568;
+    --paper: #ffffff;
+    --paper-soft: #f7fafc;
+    --line: #e2e8f0;
+    --accent: #1e3a5f;
+    --accent-soft: #eef2f7;
+
+    --sev-critical-bg: #fee2e2; --sev-critical-fg: #991b1b; --sev-critical-bd: #fca5a5;
+    --sev-high-bg: #ffedd5;     --sev-high-fg: #9a3412;     --sev-high-bd: #fdba74;
+    --sev-medium-bg: #fef3c7;   --sev-medium-fg: #92400e;   --sev-medium-bd: #fcd34d;
+    --sev-low-bg: #ecfccb;      --sev-low-fg: #3f6212;      --sev-low-bd: #bef264;
+    --sev-info-bg: #f1f5f9;     --sev-info-fg: #475569;     --sev-info-bd: #cbd5e1;
+
+    --status-confirmed-bg: #dcfce7; --status-confirmed-fg: #166534; --status-confirmed-bd: #86efac;
+    --status-potential-bg: #fef3c7; --status-potential-fg: #92400e; --status-potential-bd: #fcd34d;
+    --status-info-bg: #f1f5f9;      --status-info-fg: #475569;      --status-info-bd: #cbd5e1;
+    --status-candidate-bg: #e0e7ff; --status-candidate-fg: #3730a3; --status-candidate-bd: #a5b4fc;
+    --status-fp-bg: #f1f5f9;        --status-fp-fg: #64748b;        --status-fp-bd: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--paper-soft);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header.hero {
+    background: linear-gradient(135deg, #0f1c2e, var(--accent));
+    color: #f1f5f9;
+    padding: 48px 24px;
+    margin-bottom: 32px;
+  }
+  header.hero .wrap { padding: 0; }
+  header.hero h1 { margin: 0 0 8px; font-size: 1.9rem; }
+  header.hero .meta { color: #b8c4d4; font-size: 0.95rem; }
+  header.hero .meta span { display: inline-block; margin: 0 18px 4px 0; }
+  header.hero .lang { margin-top: 14px; font-size: 0.88rem; }
+  header.hero .lang a { color: #f1f5f9; border: 1px solid #5c7290; border-radius: 999px; padding: 2px 12px; text-decoration: none; margin-right: 8px; }
+  header.hero .lang a[aria-current="page"] { background: #f1f5f9; color: var(--accent); }
+
+  .classification { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 10px; padding: 10px 16px; font-size: 0.9rem; margin-bottom: 24px; }
+
+  nav.toc {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 32px;
+    font-size: 0.92rem;
+  }
+  nav.toc a { color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block; margin-bottom: 4px; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 1.3rem;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  h3 { font-size: 1.05rem; margin: 0 0 6px; }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid;
+  }
+  .sev-critical { background: var(--sev-critical-bg); color: var(--sev-critical-fg); border-color: var(--sev-critical-bd); }
+  .sev-high     { background: var(--sev-high-bg);     color: var(--sev-high-fg);     border-color: var(--sev-high-bd); }
+  .sev-medium   { background: var(--sev-medium-bg);   color: var(--sev-medium-fg);   border-color: var(--sev-medium-bd); }
+  .sev-low      { background: var(--sev-low-bg);      color: var(--sev-low-fg);      border-color: var(--sev-low-bd); }
+  .sev-info     { background: var(--sev-info-bg);     color: var(--sev-info-fg);     border-color: var(--sev-info-bd); }
+
+  .status-confirmed    { background: var(--status-confirmed-bg); color: var(--status-confirmed-fg); border-color: var(--status-confirmed-bd); }
+  .status-potential    { background: var(--status-potential-bg); color: var(--status-potential-fg); border-color: var(--status-potential-bd); }
+  .status-informational { background: var(--status-info-bg);      color: var(--status-info-fg);      border-color: var(--status-info-bd); }
+  .status-candidate    { background: var(--status-candidate-bg); color: var(--status-candidate-fg); border-color: var(--status-candidate-bd); }
+  .status-fp           { background: var(--status-fp-bg);        color: var(--status-fp-fg);        border-color: var(--status-fp-bd); text-decoration: line-through; }
+
+  .cvss-note { font-size: 0.85rem; color: var(--ink-soft); margin-left: 6px; }
+  .severity-note { background: #fefce8; border: 1px solid #fde047; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; margin: 10px 0; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--paper); border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.92rem; vertical-align: top; }
+  th { background: var(--accent-soft); color: var(--ink-soft); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  details.finding {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    padding: 0;
+  }
+  details.finding > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 16px 22px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+  }
+  details.finding > summary::-webkit-details-marker { display: none; }
+  details.finding > summary::before { content: "▸"; color: var(--ink-soft); transition: transform 0.15s; }
+  details.finding[open] > summary::before { transform: rotate(90deg); }
+  details.finding .finding-id { color: var(--ink-soft); font-weight: 400; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.85rem; }
+  details.finding .body { padding: 0 22px 20px; border-top: 1px solid var(--line); }
+  details.finding dl { display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; margin: 14px 0; font-size: 0.92rem; }
+  details.finding dt { color: var(--ink-soft); }
+  details.finding dd { margin: 0; }
+  details.finding code { background: var(--paper-soft); padding: 1px 5px; border-radius: 4px; font-size: 0.88em; word-break: break-all; }
+  details.finding ul { margin: 6px 0; padding-left: 20px; }
+  details.finding p { margin: 10px 0; }
+
+  .exec-summary { font-size: 1.05rem; }
+  .counts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .counts .count { border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-width: 120px; background: var(--paper-soft); }
+  .counts .count strong { display: block; font-size: 1.4rem; }
+  .appendix-item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .appendix-item:last-child { border-bottom: none; }
+  .muted { color: var(--ink-soft); }
+
+  footer { text-align: center; color: var(--ink-soft); font-size: 0.85rem; padding-top: 24px; border-top: 1px solid var(--line); }
+
+  @media print {
+    body { background: #fff; }
+    header.hero { background: var(--accent) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    nav.toc, header.hero .lang { display: none; }
+    details.finding { break-inside: avoid; border: 1px solid #999; }
+    details.finding > summary::before { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Avaliação de Segurança de Aplicação Mobile</h1>
+    <div class="meta">
+      <span><strong>VulnBank Demo</strong> build desconhecido</span>
+      <span>Plataforma(s): somente Android</span>
+      <span>Framework: Android nativo (presumido)</span>
+      <span>Período da avaliação: 2026-10-08 a 2026-10-09</span>
+    </div>
+    <div class="meta"><span>SHA-256 do artefato: <code>unknown</code></span></div>
+    <div class="lang">
+      <a href="final-report.pt-BR.html" aria-current="page" lang="pt-BR">Português (BR)</a>
+      <a href="final-report.en.html" lang="en">English</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="classification">Confidencial: contém detalhes de vulnerabilidades não corrigidas</div>
+
+<nav class="toc">
+  <a href="#exec-summary">Sumário executivo</a>
+  <a href="#scope">Escopo e autorização</a>
+  <a href="#method">Metodologia</a>
+  <a href="#coverage">Cobertura MASVS</a>
+  <a href="#findings-summary">Resumo dos achados</a>
+  <a href="#confirmed">Achados confirmados</a>
+  <a href="#potential">Achados potenciais</a>
+  <a href="#informational">Observações informativas e de hardening</a>
+  <a href="#plan">Plano de remediação priorizado</a>
+  <a href="#appendix-a">Apêndice A: Falsos positivos e itens descartados</a>
+  <a href="#appendix-b">Apêndice B: Inventário da superfície de ataque</a>
+  <a href="#appendix-c">Apêndice C: Metodologia e limitações</a>
+  <a href="#appendix-d">Apêndice D: Glossário</a>
+  <a href="#appendix-e">Apêndice E: Comparação com auditoria anterior</a>
+</nav>
+
+<section id="exec-summary">
+  <h2>Sumário executivo</h2>
+  <div class="card exec-summary">
+    <p>Nenhum achado chegou a Confirmado; dois estão como Potencial e com severidade Alta, e quatro são candidatos que o painel não revisou. O mais grave é o AND-MAN-003, uma deep link exportada e navegável para uma tela de transferência sem guarda de permissão, que não pôde ser fechada porque o app nunca foi instalado no aparelho de teste e nenhum código de implementação foi fornecido. Corrija as flags do manifesto antes de qualquer build de release, e adicione uma guarda de permissão e uma reautenticação dentro do app ao caminho de transferência.</p>
+    <div class="counts">
+      <div class="count"><strong>0</strong><span class="badge sev-critical">Crítica</span></div>
+      <div class="count"><strong>3</strong><span class="badge sev-high">Alta</span></div>
+      <div class="count"><strong>1</strong><span class="badge sev-medium">Média</span></div>
+      <div class="count"><strong>1</strong><span class="badge sev-low">Baixa</span></div>
+      <div class="count"><strong>1</strong><span class="badge sev-info">Informativa</span></div>
+    </div>
+    <div class="counts">
+      <div class="count"><strong>0</strong><span class="badge status-confirmed">Confirmado</span></div>
+      <div class="count"><strong>2</strong><span class="badge status-potential">Potencial</span></div>
+      <div class="count"><strong>0</strong><span class="badge status-informational">Informativo</span></div>
+      <div class="count"><strong>0</strong><span class="badge status-fp">Falso positivo</span></div>
+      <div class="count"><strong>4</strong><span class="badge status-candidate">Candidato</span></div>
+    </div>
+    <p class="muted"><strong>Principais riscos:</strong> AND-MAN-003 (Potencial, Alta, CVSS 7.1) · AND-MAN-001 (Potencial, Alta, CVSS 5.9) · AND-MAN-004 (Candidato, Alta na primeira avaliação, CVSS 7.7, não revisado pelo painel)</p>
+    <p class="muted">A severidade é <code>final_severity</code> para achados revisados pelo painel e <code>severity_initial</code> para candidatos. Problemas distintos: 6 (sem fusões, ver Apêndice C).</p>
+  </div>
+</section>
+
+<section id="scope">
+  <h2>Escopo e autorização</h2>
+  <div class="card">
+    <p>Alvo: VulnBank Demo (<code>com.vulnbankdemo.app</code>), um fixture de manifesto sintético. Em escopo: revisão de <code>AndroidManifest.xml</code>, somente achados no nível do manifesto. Fora de escopo: todo o resto, porque não existe código-fonte, DEX nem APK para este fixture. Autorização: app próprio, escrito pelo mantenedor do repositório como fixture de teste (<code>scope.md</code>).</p>
+  </div>
+</section>
+
+<section id="method">
+  <h2>Metodologia</h2>
+  <div class="card">
+    <ul>
+      <li><strong>Estática (Fase 2):</strong> <code>android-manifest-auditor</code> rodou e produziu seis registros. <code>android-ipc-ui-auditor</code> e <code>deeplink-clipboard-auditor</code> (subescopo DLK) foram recomendados, mas nenhuma saída deles está no diretório do engajamento, então não há registro de que tenham rodado. Os outros dez especialistas foram ignorados (Apêndice C).</li>
+      <li><strong>Dinâmica (Fase 3):</strong> limitada. Um aparelho estava conectado, mas o pacote-alvo não estava instalado nele, então nenhum teste no nível do app foi possível. O comando dinâmico de cada achado foi tentado, e todos falharam por estado de instalação. Não existe prova de conceito dinâmica para nenhum achado.</li>
+      <li><strong>Painel adversarial (Fase 4):</strong> promotor e 2 a 3 céticos por achado; AND-MAN-001 e AND-MAN-003 têm três passes de céticos cada (Alta exige três). Os quatro candidatos nunca chegaram ao painel. Somente o painel pode produzir Confirmado.</li>
+      <li><strong>Severidade:</strong> classificação de impacto (crítica a baixa), definida a partir do modelo de atacante, da sensibilidade do ativo e do raio de impacto.</li>
+      <li><strong>CVSS 3.1:</strong> cada achado tem um vetor base; o score é calculado a partir dele por <code>scripts/cvss31.py</code>. Quando a faixa CVSS e a severidade do painel diferem em uma faixa ou mais, o achado mostra uma Nota sobre a severidade.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="coverage">
+  <h2>Cobertura MASVS</h2>
+  <table>
+    <thead><tr><th>Controle MASVS</th><th>Cobertura</th><th>Achados</th></tr></thead>
+    <tbody>
+      <tr data-fact="coverage" data-control="STORAGE" data-coverage="partial"><td>STORAGE</td><td>Parcial</td><td>AND-MAN-002, AND-MAN-004</td></tr>
+      <tr data-fact="coverage" data-control="CRYPTO" data-coverage="not-tested"><td>CRYPTO</td><td>Não testado</td><td>—</td></tr>
+      <tr data-fact="coverage" data-control="AUTH" data-coverage="partial"><td>AUTH</td><td>Parcial</td><td>AND-MAN-003</td></tr>
+      <tr data-fact="coverage" data-control="NETWORK" data-coverage="not-tested"><td>NETWORK</td><td>Não testado</td><td>—</td></tr>
+      <tr data-fact="coverage" data-control="PLATFORM" data-coverage="partial"><td>PLATFORM</td><td>Parcial</td><td>AND-MAN-003, AND-MAN-004, AND-MAN-006</td></tr>
+      <tr data-fact="coverage" data-control="CODE" data-coverage="not-tested"><td>CODE</td><td>Não testado</td><td>—</td></tr>
+      <tr data-fact="coverage" data-control="RESILIENCE" data-coverage="partial"><td>RESILIENCE</td><td>Parcial</td><td>AND-MAN-001</td></tr>
+      <tr data-fact="coverage" data-control="PRIVACY" data-coverage="not-tested"><td>PRIVACY</td><td>Não testado</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Parcial significa que o manifesto foi revisado para aquele controle e nenhuma implementação foi. Um controle marcado como Não testado, com o motivo no Apêndice C, não é um atestado de limpeza.</p>
+</section>
+
+<section id="findings-summary">
+  <h2>Resumo dos achados</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Achado</th><th>Severidade</th><th>Status</th><th>Modelo de atacante</th><th>CVSS 3.1</th><th>IDs de referência</th></tr>
+    </thead>
+    <tbody>
+      <tr data-fact="finding" data-id="AND-MAN-003" data-status="potential" data-severity="high" data-cwe="CWE-939" data-cvss="CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N" data-score="7.1">
+        <td class="num">1</td>
+        <td>AND-MAN-003: TransferMoneyActivity exportada com deep link BROWSABLE de esquema customizado e sem guarda de permissão</td>
+        <td><span class="badge sev-high">Alta</span></td>
+        <td><span class="badge status-potential">Potencial</span></td>
+        <td>remote</td>
+        <td class="num">7.1 <span class="muted">Alta</span></td>
+        <td>MAN-04, MAN-09</td>
+      </tr>
+      <tr data-fact="finding" data-id="AND-MAN-001" data-status="potential" data-severity="high" data-cwe="CWE-489" data-cvss="CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N" data-score="5.9">
+        <td class="num">2</td>
+        <td>AND-MAN-001: android:debuggable="true" definido explicitamente em application</td>
+        <td><span class="badge sev-high">Alta</span></td>
+        <td><span class="badge status-potential">Potencial</span></td>
+        <td>physical</td>
+        <td class="num">5.9 <span class="muted">Média</span></td>
+        <td>MAN-01</td>
+      </tr>
+      <tr data-fact="finding" data-id="AND-MAN-004" data-status="candidate" data-severity="high" data-cwe="CWE-926" data-cvss="CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N" data-score="7.7">
+        <td class="num">3</td>
+        <td>AND-MAN-004: AccountProvider exportado sem permissão, sem path-permission e sem escopo de URI (não revisado pelo painel)</td>
+        <td><span class="badge sev-high">Alta</span></td>
+        <td><span class="badge status-candidate">Candidato</span></td>
+        <td>other-app</td>
+        <td class="num">7.7 <span class="muted">Alta</span></td>
+        <td>MAN-04, MAN-06</td>
+      </tr>
+      <tr data-fact="finding" data-id="AND-MAN-002" data-status="candidate" data-severity="medium" data-cwe="CWE-530" data-cvss="CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N" data-score="4.6">
+        <td class="num">4</td>
+        <td>AND-MAN-002: android:allowBackup="true" sem restrição de conteúdo de backup (não revisado pelo painel)</td>
+        <td><span class="badge sev-medium">Média</span></td>
+        <td><span class="badge status-candidate">Candidato</span></td>
+        <td>physical</td>
+        <td class="num">4.6 <span class="muted">Média</span></td>
+        <td>MAN-02</td>
+      </tr>
+      <tr data-fact="finding" data-id="AND-MAN-005" data-status="candidate" data-severity="low" data-cwe="CWE-1188" data-cvss="CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:N/I:N/A:N" data-score="0.0">
+        <td class="num">5</td>
+        <td>AND-MAN-005: nenhum uses-sdk declarado (não revisado pelo painel)</td>
+        <td><span class="badge sev-low">Baixa</span></td>
+        <td><span class="badge status-candidate">Candidato</span></td>
+        <td>none</td>
+        <td class="num">0.0 <span class="muted">Nenhuma</span></td>
+        <td>MAN-12</td>
+      </tr>
+      <tr data-fact="finding" data-id="AND-MAN-006" data-status="candidate" data-severity="info" data-cwe="CWE-1000" data-cvss="CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N" data-score="0.0">
+        <td class="num">6</td>
+        <td>AND-MAN-006: inventário de componentes exportados, um mapa de superfície IPC e não uma vulnerabilidade (não revisado pelo painel)</td>
+        <td><span class="badge sev-info">Informativa</span></td>
+        <td><span class="badge status-candidate">Candidato</span></td>
+        <td>other-app</td>
+        <td class="num">0.0 <span class="muted">Nenhuma</span></td>
+        <td>MAN-04</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="muted">Ordem: Confirmados primeiro, depois Potenciais, depois Informativos. Dentro de cada status, a severidade vai de alta para baixa, depois o score CVSS, em ordem decrescente. Candidatos ficam sob Informativos. Falsos positivos: nenhum (Apêndice A).</p>
+</section>
+
+<section id="confirmed">
+  <h2>Achados confirmados</h2>
+  <div class="card"><p>Nenhum identificado.</p></div>
+</section>
+
+<section id="potential">
+  <h2>Achados potenciais</h2>
+
+  <details class="finding">
+    <summary>
+      <span class="badge sev-high">Alta</span>
+      <span class="badge status-potential">Potencial</span>
+      AND-MAN-003: TransferMoneyActivity exportada com deep link BROWSABLE de esquema customizado e sem guarda de permissão
+      <span class="finding-id">AND-MAN-003</span>
+    </summary>
+    <div class="body">
+      <dl>
+        <dt>Modelo de atacante</dt><dd>remote</dd>
+        <dt>CWE</dt><dd>CWE-939</dd>
+        <dt>CVSS 3.1</dt><dd><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N</code> = <strong>7.1</strong> (Alta)</dd>
+        <dt>MASVS</dt><dd>MASVS-PLATFORM-1, MASVS-AUTH-1</dd>
+        <dt>IDs de referência</dt><dd>MAN-04, MAN-09</dd>
+      </dl>
+      <p><strong>Descrição:</strong> <code>.ui.TransferMoneyActivity</code> é exportada e declara um filtro de intent BROWSABLE para <code>vulnbank://transfer</code>. Não tem <code>android:permission</code>, e o manifesto não define permissão customizada. Qualquer app, e qualquer link aberto em navegador, pode iniciá-la. O nome da classe sugere uma tela de movimentação de dinheiro, mas o código dela não está no registro.</p>
+      <p><strong>Caminho de ataque:</strong> Origem: um link <code>vulnbank://transfer</code> em uma página web, SMS ou chat, tocado por uma vítima que tem o app instalado. Um intent explícito de outro app é um subconjunto da mesma exposição (<code>extracted/AndroidManifest.xml:L24-33</code>) → propagação: a plataforma resolve o filtro BROWSABLE e entrega o intent sem checagem de permissão (sem <code>android:permission</code> na activity, sem elemento <code>&lt;permission&gt;</code> em lugar nenhum) → sink: <code>onCreate()</code>/<code>onNewIntent()</code> de <code>TransferMoneyActivity</code>. A implementação não está no registro, então o que ela faz ao receber o intent não foi verificado.</p>
+      <p><strong>Reprodução (estática):</strong></p>
+      <ol>
+        <li>Abrir <code>extracted/AndroidManifest.xml</code>.</li>
+        <li>Nas linhas L24-26, <code>&lt;activity android:name=".ui.TransferMoneyActivity" android:exported="true"&gt;</code>. Sem atributo <code>android:permission</code>.</li>
+        <li>Nas linhas L27-32, um filtro de intent: ação <code>VIEW</code>, categorias <code>DEFAULT</code> e <code>BROWSABLE</code>, <code>data android:scheme="vulnbank" android:host="transfer"</code>. Nenhum <code>pathPattern</code> ou <code>mimeType</code> restringe o filtro.</li>
+        <li>Confirmar que não há elemento <code>&lt;permission&gt;</code> em lugar nenhum do arquivo de 41 linhas.</li>
+      </ol>
+      <p><strong>Reprodução (dinâmica):</strong> <code>adb shell am start -a android.intent.action.VIEW -d "vulnbank://transfer" com.vulnbankdemo.app</code> retornou <code>Error: Activity not started, unable to resolve Intent</code> no dispositivo 84f7a024. O pacote não está instalado. A forma sem pacote também falhou, então nenhum app naquele dispositivo reclama o esquema. Isso mostra só o estado de instalação. Não testa a activity.</p>
+      <p><strong>Evidências:</strong> <code>extracted/AndroidManifest.xml:L24-33</code> (estática; SHA-256 não registrado) · <code>findings/dynamic-session-log.md</code> §3 (dinâmica, resultado negativo de estado de instalação) · <code>exploitation/AND-MAN-003.md</code> · <code>exploitation/AND-MAN-003.skeptic-3.md</code></p>
+      <p><strong>Veredito do painel adversarial:</strong> A tese de alcançabilidade do promotor se sustenta. Três passes de céticos retornaram <code>stands</code>, e nenhum produziu refutação bem-evidenciada. O que foi tentado: (1) inflação do modelo de atacante: se "remote" exige secretamente um segundo app malicioso. Não exige, porque BROWSABLE permite que um navegador entregue o intent. (2) Sanitizador ausente: o manifesto inteiro foi procurado por <code>android:permission</code>, <code>&lt;permission&gt;</code>, restrições de <code>mimeType</code>/<code>pathPattern</code> e um segundo filtro. Nada foi encontrado. (3) App Links ou default de versão do SDK: não se aplicam, porque o esquema é customizado e <code>exported="true"</code> é explícito. (4) Comportamento padrão de deep link: um deep link sozinho não é o bug; o bug é o deep link combinado com nome sensível e sem guarda. (5) Um formulário de pré-preenchimento legítimo que mesmo assim exige reautenticação: plausível e não refutado. Essa é a lacuna em aberto, e é por ela que a classificação para em Potencial.</p>
+      <p><strong>Correção:</strong> Definir <code>android:exported="false"</code>, a menos que outros apps precisem alcançar esta tela. Se precisarem, proteger com permissão em nível de assinatura. Exigir reautenticação dentro do app antes de qualquer transferência, qualquer que seja o ponto de entrada. Não pegar valores nem destinatários da URI. Se um link precisar abrir a tela, usar App Link https verificado (<code>android:autoVerify="true"</code>) e manter a etapa de confirmação.</p>
+      <p><strong>Critério de aceite:</strong> Em build de release, nem <code>adb shell am start -a android.intent.action.VIEW -d "vulnbank://transfer"</code> nem um link tocado no navegador inicia uma transferência sem um prompt de autenticação, e <code>aapt2 dump xmltree</code> no APK de release mostra que a activity não é exportada ou tem guarda de permissão. Aguardando reteste.</p>
+      <p><strong>Por que não está Confirmado:</strong> faltam (a) código de implementação de <code>TransferMoneyActivity</code> mostrando que uma transferência roda sem etapa de reautenticação, ou (b) um teste dinâmico contra um build instalado deste manifesto no qual o link causa uma transferência. Também em aberto: se dados de caminho ou de query da URI chegam à lógica do app. O elemento <code>&lt;data&gt;</code> não tem filtro de caminho, então qualquer caminho casaria, mas se o código lê esses dados não foi estabelecido.</p>
+    </div>
+  </details>
+
+  <details class="finding">
+    <summary>
+      <span class="badge sev-high">Alta</span>
+      <span class="badge status-potential">Potencial</span>
+      AND-MAN-001: android:debuggable="true" definido explicitamente em application
+      <span class="finding-id">AND-MAN-001</span>
+    </summary>
+    <div class="body">
+      <dl>
+        <dt>Modelo de atacante</dt><dd>physical</dd>
+        <dt>CWE</dt><dd>CWE-489</dd>
+        <dt>CVSS 3.1</dt><dd><code>CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N</code> = <strong>5.9</strong> (Média)</dd>
+        <dt>MASVS</dt><dd>MASVS-RESILIENCE-2</dd>
+        <dt>IDs de referência</dt><dd>MAN-01</dd>
+      </dl>
+      <div class="severity-note"><strong>Nota sobre a severidade:</strong> A faixa CVSS é Média (5.9) e a severidade final do painel é Alta, a uma faixa de distância. O vetor codifica acesso físico (AV:P) e exigência de privilégio (PR:L): o atacante precisa primeiro de uma sessão ADB autorizada. O painel manteve Alta porque um <code>run-as</code> ou um attach JDWP bem-sucedido dá acesso total à sandbox do app e a qualquer checagem do lado do cliente, e porque os nomes dos componentes apontam para um ativo bancário, a exceção que <code>severity-rating.md</code> permite para achados de resiliência. O cético 3 sugeriu Média. O orquestrador não aplicou isso, e <code>final_severity</code> continua Alta.</div>
+      <p><strong>Descrição:</strong> O elemento <code>&lt;application&gt;</code> define <code>android:debuggable="true"</code> como valor literal e incondicional. Isso permite que um shell ADB use <code>run-as</code> sobre o diretório privado de dados do app, e que um debugger seja anexado ao processo do app.</p>
+      <p><strong>Caminho de ataque:</strong> Origem: um atacante com acesso físico e uma sessão ADB autorizada (depuração USB ativa, host autorizado) → propagação: o gerenciador de pacotes marca o app como depurável por causa de <code>extracted/AndroidManifest.xml:L10</code> (bloco L7-13), e nenhum override de release aparece no registro → sink: <code>run-as com.vulnbankdemo.app</code> dá leitura e escrita em <code>/data/data/com.vulnbankdemo.app/</code>, e um attach JDWP permite que um debugger leia e altere o estado do processo. O que fica armazenado ali é inferido pela finalidade aparente do app, não observado.</p>
+      <p><strong>Reprodução (estática):</strong></p>
+      <ol>
+        <li>Abrir <code>extracted/AndroidManifest.xml</code>.</li>
+        <li>Localizar <code>&lt;application&gt;</code> em L7-13. <code>android:debuggable="true"</code> está em L10.</li>
+        <li>Procurar na árvore do engajamento por <code>tools:replace</code>, <code>tools:node</code>, um segundo manifesto ou um <code>build.gradle</code>. Nada encontrado, e não existe <code>build.gradle</code> na árvore.</li>
+      </ol>
+      <p><strong>Reprodução (dinâmica):</strong> <code>adb shell run-as com.vulnbankdemo.app id</code> retornou <code>run-as: unknown package: com.vulnbankdemo.app</code> (saída 1) no dispositivo 84f7a024. O pacote não está instalado, então isso não diz nada sobre o comportamento de depuração.</p>
+      <p><strong>Evidências:</strong> <code>extracted/AndroidManifest.xml:L7-13</code> (estática; SHA-256 não registrado) · <code>findings/dynamic-session-log.md</code> §3 (dinâmica, resultado negativo de estado de instalação) · <code>exploitation/AND-MAN-001.md</code> · <code>exploitation/AND-MAN-001.skeptic-3.md</code></p>
+      <p><strong>Veredito do painel adversarial:</strong> Três passes de céticos retornaram <code>stands</code>. O que foi tentado: (1) inflação do modelo de atacante: nenhum caminho de rede ou de segundo app alcança <code>run-as</code> ou JDWP, então <code>physical</code> foi mantido. (2) Override de build de release (o plugin Android Gradle força <code>debuggable=false</code> em release): não há <code>build.gradle</code> no registro para checar. Este é o único passo que poderia fechar o caso. (3) Diretivas de merge do manifesto e segundos manifestos: nenhum. (4) Default de targetSdk: <code>debuggable</code> não depende de versão. (5) Argumento de "artefato do decompilador": não se aplica, porque o arquivo é texto escrito à mão. (6) A precondição de ADB: real e declarada, e já considerada na classificação Potencial. A questão do override de release continua aberta, e é por ela que a classificação para em Potencial.</p>
+      <p><strong>Correção:</strong> Definir <code>android:debuggable="false"</code> (ou omitir) no build type de release. Manter <code>debuggable</code> como true somente no build de debug. Verificar o manifesto mesclado da variante de release.</p>
+      <p><strong>Critério de aceite:</strong> Em build de release instalado em um aparelho, <code>adb shell run-as com.vulnbankdemo.app id</code> falha porque o <code>run-as</code> informa que o pacote não é depurável, e o manifesto do APK de release não mostra <code>debuggable="true"</code>. A execução atual não conta: o pacote não estava instalado.</p>
+      <p><strong>Por que não está Confirmado:</strong> faltam um build instalado deste manifesto no qual <code>run-as</code> ou um attach JDWP tenha sucesso, ou uma configuração de release que mostre de forma conclusiva que o valor não é sobrescrito. Um build de release cujo manifesto mesclado defina <code>debuggable=false</code> fecharia o achado no sentido oposto. Também não verificado: o que a sandbox de fato guarda (tokens de sessão, dados de conta).</p>
+    </div>
+  </details>
+
+  <h3>Achados potenciais: o que os elevaria</h3>
+  <p class="muted">Os dois itens acima apontam a evidência que os levaria a Confirmado: um build instalado deste manifesto, com o comportamento de transferência e da sandbox observado em aparelho, ou o código de implementação e a configuração de build de release que o painel pediu.</p>
+</section>
+
+<section id="informational">
+  <h2>Observações informativas e de hardening</h2>
+  <p class="muted">Candidatos, não revisados pelo painel. Foram levantados por especialistas e nunca chegaram ao painel adversarial. A severidade é a primeira avaliação do especialista (<code>severity_initial</code>), não um veredito do painel.</p>
+  <div class="card">
+    <div class="appendix-item">
+      <strong>AND-MAN-004</strong> <span class="badge status-candidate">Candidato</span>
+      AccountProvider exportado sem permissão, sem path-permission e sem escopo de URI <span class="muted">· MAN-04, MAN-06</span>
+      <div>Candidato, não revisado pelo painel. Alta na primeira avaliação, CVSS 7.7. O provider é exportado para qualquer app sem permissão, e o nome sugere dados de conta. Se implementa query/insert/update/delete, e o que retornam, não está no registro.</div>
+      <div class="muted">Correção: Definir <code>exported="false"</code>, ou proteger com <code>readPermission</code>/<code>writePermission</code> de assinatura e entradas de path-permission. Classificado P1 (regra 2) no plano.</div>
+    </div>
+    <div class="appendix-item">
+      <strong>AND-MAN-002</strong> <span class="badge status-candidate">Candidato</span>
+      android:allowBackup="true" sem restrição de conteúdo de backup <span class="muted">· MAN-02</span>
+      <div>Candidato, não revisado pelo painel. Média na primeira avaliação, CVSS 4.6. Se expõe tokens depende do que o app armazena, o que não está no registro.</div>
+      <div class="muted">Correção: Definir <code>allowBackup="false"</code>, ou adicionar um arquivo <code>fullBackupContent</code> ou <code>dataExtractionRules</code> que exclua arquivos de sessão e de conta.</div>
+    </div>
+    <div class="appendix-item">
+      <strong>AND-MAN-005</strong> <span class="badge status-candidate">Candidato</span>
+      Nenhum uses-sdk declarado <span class="muted">· MAN-12</span>
+      <div>Candidato, não revisado pelo painel. Baixa na primeira avaliação, CVSS 0.0. <strong>Nota sobre a severidade:</strong> a faixa CVSS nenhuma (0.0) e a severidade baixa diferem em uma faixa, então a nota é exigida. O vetor é AV:L/AC:H/PR:H sem impacto, e o achado é uma lacuna de configuração, não um sink alcançável. Defaults de plataforma dependentes de versão não podem ser verificados a partir deste manifesto.</div>
+      <div class="muted">Correção: Declarar <code>minSdkVersion</code> e <code>targetSdkVersion</code>, ou confirmá-los no <code>build.gradle</code>.</div>
+    </div>
+    <div class="appendix-item">
+      <strong>AND-MAN-006</strong> <span class="badge status-candidate">Candidato</span>
+      Inventário de componentes exportados (mapa de superfície IPC) <span class="muted">· MAN-04</span>
+      <div>Candidato, não revisado pelo painel. Um registro de inventário, não uma vulnerabilidade. <code>LoginActivity</code> é exportada como o ponto de entrada LAUNCHER, o que é esperado. CVSS 0.0.</div>
+      <div class="muted">Correção: Sem correção. Manter o inventário atualizado quando os componentes mudarem.</div>
+    </div>
+  </div>
+</section>
+
+<section id="plan">
+  <h2>Plano de remediação priorizado</h2>
+  <p class="muted">Regra de prioridade aplicada, primeira que casa vence: P1 para Confirmado alto/crítico; P1 para qualquer achado alto/crítico cujo impacto seja credenciais, tokens, dados de conta, uma ação de pagamento ou transferência, ou uma sandbox que os guarda (inclui Potencial e candidato); P2 para outros Confirmados; P2 para Potencial alto/crítico não capturado acima; P2 para achados médios que expõem credenciais ou tokens; P3 para todo o resto. Dentro de uma prioridade, score CVSS em ordem decrescente. Empates em 0.0 são ordenados pelo ID do achado.</p>
+  <table>
+    <thead><tr><th>Prioridade</th><th>Achado</th><th>Ação</th><th>Critério de aceite (reteste)</th></tr></thead>
+    <tbody>
+      <tr><td>P1, corrigir agora (regra 2: dados de conta)</td><td>AND-MAN-004 AccountProvider exportado (CVSS 7.7, candidato)</td><td>Definir <code>android:exported="false"</code>, a menos que um consumidor externo precise dele. Se precisar, adicionar <code>readPermission</code>/<code>writePermission</code> protegidos por permissão de assinatura, e entradas <code>&lt;path-permission&gt;</code>. Revisar query/insert/update/delete quando a implementação for fornecida.</td><td>Em build de release, <code>adb shell content query --uri content://com.vulnbankdemo.app.provider</code> a partir do shell retorna negação de permissão ou nenhuma linha. Aguardando reteste: o pacote não estava instalado no aparelho de teste.</td></tr>
+      <tr><td>P1, corrigir agora (regra 2: ação de transferência)</td><td>AND-MAN-003 TransferMoneyActivity exportada com deep link BROWSABLE (CVSS 7.1, Potencial)</td><td>Definir <code>exported="false"</code>, ou proteger com permissão de assinatura. Exigir reautenticação dentro do app antes de qualquer transferência. Não pegar valores nem destinatários da URI. Se um link precisar abri-la, usar App Link verificado.</td><td>Em build de release, nem <code>adb shell am start -a android.intent.action.VIEW -d "vulnbank://transfer"</code> nem um link tocado no navegador inicia uma transferência sem prompt de autenticação. <code>aapt2 dump xmltree</code> no APK de release mostra que a activity não é exportada ou tem guarda de permissão. Aguardando reteste.</td></tr>
+      <tr><td>P2, próxima release (regra 4: Potencial alto, não capturado pela regra 2)</td><td>AND-MAN-001 debuggable="true" (CVSS 5.9, Potencial)</td><td>Definir <code>android:debuggable="false"</code> (ou omitir) no build type de release. Manter true somente em debug.</td><td>Em build de release instalado em um aparelho, <code>adb shell run-as com.vulnbankdemo.app id</code> falha porque o pacote não é depurável. O manifesto do APK de release não mostra <code>debuggable="true"</code>. Aguardando reteste.</td></tr>
+      <tr><td>P3, backlog (regra 6)</td><td>AND-MAN-002 allowBackup="true" (CVSS 4.6, candidato)</td><td>Definir <code>allowBackup="false"</code>, ou adicionar <code>fullBackupContent</code>/<code>dataExtractionRules</code> excluindo arquivos de sessão e de conta.</td><td><code>aapt2 dump xmltree</code> no APK de release mostra <code>allowBackup="false"</code>, ou um arquivo de regras de backup que exclui arquivos de sessão. O backup do build de release não contém arquivos de sessão. Aguardando reteste.</td></tr>
+      <tr><td>P3, backlog (regra 6)</td><td>AND-MAN-005 Sem uses-sdk (CVSS 0.0, candidato)</td><td>Declarar <code>minSdkVersion</code> e <code>targetSdkVersion</code> no manifesto, ou confirmá-los no <code>build.gradle</code>.</td><td><code>aapt2 dump badging</code> no APK de release imprime <code>sdkVersion</code> e <code>targetSdkVersion</code>.</td></tr>
+      <tr><td>P3, backlog (regra 6)</td><td>AND-MAN-006 Inventário de componentes (CVSS 0.0, candidato)</td><td>Sem correção de código. Manter o inventário atualizado conforme os componentes mudam.</td><td>A lista de componentes exportados no Apêndice B bate com <code>aapt2 dump xmltree</code> no APK de release.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="appendix-a">
+  <h2>Apêndice A: Falsos positivos e itens descartados</h2>
+  <div class="card"><p>Nenhum identificado. Nenhum cético retornou refutação bem-evidenciada, então nenhum achado foi fechado como falso positivo. AND-MAN-001 e AND-MAN-003 foram mantidos como Potencial, não como Falso positivo. O <code>.ui.LoginActivity</code>, exportado como LAUNCHER, foi revisado em AND-MAN-006 e tratado como ponto de entrada esperado, não como achado.</p></div>
+</section>
+
+<section id="appendix-b">
+  <h2>Apêndice B: Inventário da superfície de ataque</h2>
+  <div class="card">
+    <p class="muted">A partir de <code>target-profile.md</code>. O que não pode ser determinado pelo artefato está escrito como desconhecido.</p>
+    <div class="appendix-item"><strong>Componentes exportados:</strong> <code>.ui.LoginActivity</code> (Activity, exportada, MAIN/LAUNCHER, sem permissão; ponto de entrada esperado) · <code>.ui.TransferMoneyActivity</code> (Activity, exportada, VIEW/DEFAULT/BROWSABLE, <code>vulnbank://transfer</code>, sem permissão) · <code>.data.AccountProvider</code> (ContentProvider, exportado, authority <code>com.vulnbankdemo.app.provider</code>, sem permissão, sem path-permission). Nenhum elemento <code>&lt;service&gt;</code> ou <code>&lt;receiver&gt;</code> está declarado.</div>
+    <div class="appendix-item"><strong>Esquemas de URL e App/Universal Links:</strong> esquema customizado <code>vulnbank://transfer</code> (BROWSABLE). Sem App Links: sem <code>android:autoVerify</code>, sem filtro https, sem referência a <code>assetlinks.json</code>. Universal Links do iOS: não se aplica.</div>
+    <div class="appendix-item"><strong>WebViews:</strong> desconhecido. Não avaliável: não há código, e o manifesto não mostra uso de WebView.</div>
+    <div class="appendix-item"><strong>Endpoints de rede:</strong> desconhecido. Nenhuma string ou recurso foi fornecido. O único fato de rede visível é a permissão INTERNET.</div>
+    <div class="appendix-item"><strong>Permissões e entitlements:</strong> somente <code>android.permission.INTERNET</code>. Nenhum <code>&lt;permission&gt;</code> customizado. Entitlements do iOS: não se aplica.</div>
+    <div class="appendix-item"><strong>SDKs de terceiros:</strong> desconhecido. Nenhum arquivo de build, lockfile, biblioteca ou código nativo foi fornecido.</div>
+    <div class="appendix-item"><strong>Versões:</strong> <code>minSdkVersion</code> e <code>targetSdkVersion</code> desconhecidos (sem <code>&lt;uses-sdk&gt;</code>).</div>
+  </div>
+</section>
+
+<section id="appendix-c">
+  <h2>Apêndice C: Metodologia e limitações</h2>
+  <div class="card">
+    <p><strong>Especialistas executados:</strong> <code>android-manifest-auditor</code> (<code>manifest-plist.md</code> §A, MAN-01..21; seis registros, AND-MAN-001 a AND-MAN-006). Recomendados, sem saída registrada: <code>android-ipc-ui-auditor</code> (<code>advanced-attacks.md</code> §A) e <code>deeplink-clipboard-auditor</code> (somente subescopo DLK de <code>clipboard-webview-oauth.md</code> §D). Não há registro de que tenham rodado, e não existem achados nem transcrições deles.</p>
+    <p><strong>Especialistas ignorados, com motivo segundo <code>target-profile.md</code>:</strong> <code>ios-plist-entitlements-auditor</code> e <code>ios-platform-attack-auditor</code> (artefato somente Android); <code>storage-crypto-auditor</code> (sem código de armazenamento ou criptografia); <code>taint-flow-analyst</code> (sem código-fonte nem DEX); <code>webview-security-auditor</code> (sem evidência de WebView e sem código); <code>oauth-oidc-auditor</code> (sem código ou configuração OAuth); <code>resilience-anti-tamper-auditor</code> (sem código e sem app em execução); <code>network-backend-auditor</code> (sem código de backend nem endpoints); <code>supply-chain-framework-auditor</code> (sem manifesto de dependências nem artefatos de SDK); <code>business-logic-auditor</code> (sem implementação de transferência).</p>
+    <p><strong>Cobertura dinâmica:</strong> a Fase 3 rodou de forma limitada. O dispositivo 84f7a024 estava conectado (Xiaomi M2101K6P, Android 11, SDK 30, build de usuário). O alvo nunca foi instalado: <code>pm list packages</code> (389 pacotes), <code>dumpsys package</code> e <code>run-as</code> confirmaram isso. O comando dinâmico de cada achado foi tentado uma vez, e nenhum conseguiu exercitar o app. Não tentado, porque não havia app em execução: hooking com Frida, captura de tráfego, teste de bypass de resiliência, teste de gate biométrico, diff de armazenamento e reteste. Outros pacotes no dispositivo compartilhado foram observados, mas não inspecionados. A tentativa de <code>adb backup</code> foi encerrada por timeout. Um toque de <code>KEYCODE_BACK</code> dispensou um diálogo de confirmação de backup, e o dispositivo voltou ao app em primeiro plano anterior. Nenhum dado foi lido, escrito ou exfiltrado. Isso é uma mudança de estado e está declarado aqui.</p>
+    <p><strong>Ferramentas e versões:</strong> adb 1.0.41 (platform-tools 35.0.2-12147458). apktool, jadx e aapt2 estão no host, mas não foram executados. <code>scripts/cvss31.py</code> e <code>scripts/decision_summary.py</code> (versões não registradas).</p>
+    <p><strong>Fora de escopo segundo <code>scope.md</code>:</strong> tudo exceto a revisão de <code>AndroidManifest.xml</code>: sem código-fonte, DEX, recursos, rede, backend ou comportamento do app no dispositivo.</p>
+    <p><strong>Inconsistências encontradas na montagem:</strong></p>
+    <ul>
+      <li><strong>O que mudou neste engajamento.</strong> Agora existem três passes de céticos para AND-MAN-001 e AND-MAN-003 (<code>*.skeptic-3.md</code>). Os registros anteriores tinham dois. Cada decisão do orquestrador foi escrita depois de dois passes, e uma nota do terceiro passe foi acrescentada depois; as duas notas mantêm o status em Potencial. O cético 3 de AND-MAN-003 registrou que leu seções do arquivo de acusação que não deveria ler: as seções dos outros céticos e a decisão do orquestrador. O veredito dele cita apenas as próprias checagens, mas a independência dele é mais fraca do que um passe cego e limpo. O cético 3 de AND-MAN-001 propôs Média, que não foi aplicada.</li>
+      <li><strong>O cético 3 de AND-MAN-003 leu além do que devia.</strong> A transcrição dele diz que a primeira leitura do arquivo de acusação retornou o arquivo inteiro, incluindo as seções dos outros céticos e a decisão do orquestrador, embora as instruções limitassem a leitura às seções do promotor. Ele diz que não adotou o veredito a partir dessas seções e que o formou a partir das próprias checagens contra o manifesto. A independência dele é, portanto, mais fraca do que um passe cego e limpo. Este relatório conta esse passe como o terceiro de AND-MAN-003, com essa ressalva.</li>
+      <li><strong>Momento da decisão.</strong> As decisões do orquestrador para AND-MAN-001 e AND-MAN-003 foram escritas depois de dois passes de céticos. A nota do terceiro passe foi acrescentada depois, e ambas dizem que o status continuou Potencial. O registro não mostra uma reaplicação separada da regra para o terceiro passe.</li>
+      <li><strong>Divergência de severidade.</strong> O cético 3 em AND-MAN-001 propôs Média. Não foi aplicado e está declarado na nota sobre a severidade.</li>
+      <li><strong>Contagens de linhas.</strong> O caso do promotor em AND-MAN-001 descreve um manifesto de 42 linhas. Os céticos 1 e 3 descrevem 41 linhas. Os números de linha citados (L7-13, L10, L24-33) batem em todas as transcrições. Não consegui verificar a contagem sem shell.</li>
+      <li><strong>Arquivo de backup ausente.</strong> A transcrição do cético 1 de AND-MAN-001 lista <code>findings/findings.jsonl.bak</code> no diretório. Ele não está presente nesta cópia de trabalho e não foi usado.</li>
+      <li><strong>Linhas truncadas no registro.</strong> As linhas de <code>findings.jsonl</code> foram truncadas em 2000 caracteres ao serem lidas. Os campos de decisão vêm de <code>decision-summary.json</code>, como exigido. Os campos visíveis (<code>cwe</code>, <code>cvss_vector</code>, <code>attacker_model</code>) batem com <code>decision-summary.json</code> nos seis registros. <code>status</code> e <code>severity_initial</code> na parte truncada não puderam ser conferidos contra o registro completo.</li>
+      <li><strong>Deduplicação.</strong> Nenhuma fusão. Os seis registros vêm de um só especialista. AND-MAN-006 se sobrepõe a AND-MAN-003 e AND-MAN-004 por referência e componente, mas é um registro de inventário, não um problema. Foi mantido como candidato e não é contado como vulnerabilidade distinta além dos seis registros.</li>
+      <li><strong>Posição de AND-MAN-004.</strong> Está como Alta na primeira avaliação, mas aparece sob Informativos porque o status é <code>candidate</code>, como as regras exigem. Está classificado como P1 no plano porque é Alta e expõe dados de conta.</li>
+      <li><strong>Severidade de candidatos.</strong> Candidatos não têm <code>final_severity</code>, então a nota de severidade de AND-MAN-005 usa <code>severity_initial</code> (baixa) contra CVSS nenhum. A regra não diz qual valor usar para candidatos. <code>info</code> foi tratado como a mesma faixa de nenhum para AND-MAN-006, então nenhuma nota foi acrescentada ali.</li>
+      <li><strong>Ambiguidade de prioridade (AND-MAN-001 e AND-MAN-004).</strong> A regra 2 depende de o impacto ser credenciais, tokens, dados de conta, ou uma sandbox que os guarda. Para AND-MAN-004, o sink do especialista nomeia dados de conta ou financeiros, então a regra 2 foi aplicada (P1), com base na inferência do especialista. Para AND-MAN-001, o sink nomeia apenas a sandbox do app, e nada no registro mostra que ela guarda credenciais ou tokens. A regra 2 não foi aplicada, e a regra 4 foi (P2). As regras não resolvem como tratar um sink inferido a partir de nome de classe. As duas decisões se apoiam no mesmo tipo de inferência, então um leitor pode razoavelmente ranquear AND-MAN-001 mais alto.</li>
+      <li><strong>Desempate.</strong> Achados com CVSS 0.0 são ordenados pelo ID do achado, porque o template não define desempate.</li>
+      <li><strong>Rótulos fora de <code>report-i18n.md</code>.</strong> "Principais riscos", "Contagens" e os nomes das faixas CVSS (nenhuma, baixa, média, alta, crítica). Foram fornecidos nos dois idiomas com redação correspondente.</li>
+      <li><strong>Saída de Fase 2 ausente.</strong> Não existe saída de <code>android-ipc-ui-auditor</code> nem de <code>deeplink-clipboard-auditor</code> (ver Especialistas executados acima).</li>
+      <li><strong>Lacunas de metadados.</strong> Versão/build do app e SHA-256 do artefato são desconhecidos. <code>target-profile.md</code> não registra nenhum dos dois.</li>
+      <li><strong>Datas.</strong> O escopo é datado de 2026-10-08 e a sessão dinâmica de 2026-10-09. A data do relatório é 2026-11-11.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="appendix-d">
+  <h2>Apêndice D: Glossário</h2>
+  <table>
+    <thead><tr><th>Termo</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td>Confirmado</td><td>Explorável pelo modelo de atacante declarado nesta build, com evidência dinâmica ou estática inequívoca, e as tentativas de refutação do painel falharam.</td></tr>
+      <tr><td>Potencial</td><td>Plausível e vale corrigir, mas o ciclo não pôde ser fechado. O relatório diz o que o confirmaria.</td></tr>
+      <tr><td>Informativo</td><td>Observação de boa prática ou hardening sem modelo de atacante crível neste contexto.</td></tr>
+      <tr><td>Falso positivo</td><td>O painel mostrou que o caminho está fechado ou inalcançável. Mantido no Apêndice A para mostrar o que foi verificado.</td></tr>
+      <tr><td>Candidato</td><td>Levantado por um especialista e ainda não revisado pelo painel. Não é veredito.</td></tr>
+      <tr><td>Modelo de atacante</td><td>Quem pode executar o ataque: remoto, outro app no dispositivo, acesso físico ou dispositivo com root.</td></tr>
+      <tr><td>CVSS 3.1</td><td>Score base padrão calculado a partir do vetor. Descreve ataque e impacto; não decide o status.</td></tr>
+      <tr><td>Nota sobre a severidade</td><td>Explicação exibida quando a faixa CVSS e a severidade do painel diferem em uma faixa ou mais.</td></tr>
+      <tr><td>MASVS</td><td>Padrão de verificação de segurança do OWASP Mobile, o conjunto de controles usado para organizar este relatório.</td></tr>
+      <tr><td>CWE</td><td>Common Weakness Enumeration, a classe de fraqueza da causa raiz.</td></tr>
+      <tr><td>Refutação bem-evidenciada</td><td>Refutação de um cético que cita um fato específico e verificável que quebra um passo do caminho do promotor.</td></tr>
+      <tr><td>Critério de aceite</td><td>A verificação observável que prova que a correção funciona no reteste.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="appendix-e">
+  <h2>Apêndice E: Comparação com auditoria anterior</h2>
+  <div class="card">
+    <p>Não se aplica. Nenhum relatório ou arquivo de achados anterior foi fornecido. Ver Apêndice C para a referência a <code>findings.jsonl.bak</code>, que não está presente nesta cópia de trabalho.</p>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  Gerado pelo report-synthesizer do mobile-security-skill ·
+  Autocontido: sem links externos nem scripts.
+</footer>
+
+</body>
+</html>

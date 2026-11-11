@@ -191,8 +191,15 @@ Mobile Security Skill/
 │       ├── storage-crypto.md              # STO-*/CRY-* checklists
 │       ├── finding-schema.md              # the JSON shape every agent writes
 │       ├── severity-rating.md             # the adversarial confirmation decision rule
-│       ├── report-template.md             # final report skeleton (markdown)
-│       └── report-template.html           # final report skeleton (styled, self-contained HTML)
+│       ├── report-template.md             # final report skeleton (markdown, rendered EN and PT-BR)
+│       ├── report-template.html           # final report skeleton (styled, self-contained HTML, rendered EN and PT-BR)
+│       └── report-i18n.md                 # EN / PT-BR labels, enum translations and glossary
+├── scripts/
+│   ├── cvss31.py                          # CVSS 3.1 base score from a finding's vector
+│   ├── decision_summary.py                # writes findings/decision-summary.json for the synthesizer
+│   ├── check_report_parity.py             # checks the EN and PT-BR reports state the same facts
+│   ├── validate_findings.py               # checks findings.jsonl against the schema
+│   └── sync_opencode_agents.py            # regenerates .opencode/agents/ from agents/
 ├── agents/                                # 18 subagent definitions (canonical, Claude Code format)
 └── examples/
     ├── sample-walkthrough.md              # one finding traced through the whole pipeline, narrated
@@ -212,7 +219,18 @@ python3 scripts/validate_findings.py engagement-<slug>/   # check one engagement
 python3 scripts/validate_findings.py --self-test          # check the validator itself
 ```
 
-Warnings cover invalid IDs, statuses and evidence types, `ref_ids` that do not exist in the references, missing artifacts, `confirmed` without a panel transcript or dynamic evidence, and candidates that share a fingerprint. Treat each warning as something to fix or to justify in the report's Appendix C.
+Warnings cover invalid IDs, statuses and evidence types, `ref_ids` that do not exist in the references, missing artifacts, `confirmed` without a panel transcript or dynamic evidence, candidates that share a fingerprint, and missing or malformed `cwe` and `cvss_vector` values. Treat each warning as something to fix or to justify in the report's Appendix C.
+
+### Checking the bilingual report
+
+The report is rendered in English and Portuguese (BR), in markdown and HTML, from one fact sheet. Two checks keep the renderings honest:
+
+```bash
+python3 scripts/cvss31.py "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"   # 9.8 (critical)
+python3 scripts/check_report_parity.py engagement-<slug>/report/             # OK, or a MISMATCH line per disagreement
+```
+
+`cvss31.py` computes the base score from a finding's CVSS 3.1 vector, so the number in the report can be reproduced. `check_report_parity.py` confirms the EN and PT-BR files agree on finding IDs, status, severity, CWE, CVSS vector and score, status counts, and MASVS coverage.
 
 CI (`.github/workflows/validate-findings.yml`) runs the self-test and validates the committed demo engagement on every push and pull request. Real engagements are gitignored and are not checked in CI.
 
@@ -265,7 +283,7 @@ I want to see how many of the known-intentional bugs get confirmed vs. flagged p
 
 **Scaling**: a narrow question ("does this app pin certs?") runs one specialist plus a focused panel pass, not the whole pipeline. "Full audit" / "MASVS assessment" / "pentest this app" runs the whole thing. See `SKILL.md`'s "Scaling to the ask" section.
 
-**Output**: everything lands in `engagement-<slug>/` next to wherever you're working: `scope.md` (the authorization record), `target-profile.md` (attack-surface map), `findings/findings.jsonl` (every candidate finding), `exploitation/<finding_id>.md` (every prosecutor/skeptic transcript, worth reading even for findings you don't act on since it shows what was actually checked), and `report/final-report.html` plus `report/final-report.md` (the deliverable: a well-formed, self-contained HTML report with color-coded severity/status badges and collapsible finding details, alongside the same content in plain markdown). `engagement-*/` is gitignored by default since it contains real target artifacts and evidence from an actual audit. Never commit one.
+**Output**: everything lands in `engagement-<slug>/` next to wherever you're working: `scope.md` (the authorization record), `target-profile.md` (attack-surface map), `findings/findings.jsonl` (every candidate finding), `exploitation/<finding_id>.md` (every prosecutor/skeptic transcript, worth reading even for findings you don't act on since it shows what was actually checked), and `report/final-report.en.html` plus `report/final-report.pt-BR.html` (the deliverables: well-formed, self-contained HTML reports in English and Portuguese (BR), with color-coded severity/status badges, CWE and CVSS 3.1 per finding, and collapsible finding details), alongside the same content in markdown as `final-report.en.md` and `final-report.pt-BR.md`. `engagement-*/` is gitignored by default since it contains real target artifacts and evidence from an actual audit. Never commit one.
 
 ## Authorization & Legal
 

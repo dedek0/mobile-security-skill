@@ -22,6 +22,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cvss31  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REFERENCES_DIR = REPO_ROOT / "skills" / "mobile-security-skill" / "references"
 
@@ -44,6 +47,8 @@ REQUIRED_FIELDS = [
     "platform",
     "ref_ids",
     "masvs",
+    "cwe",
+    "cvss_vector",
     "category",
     "attacker_model",
     "evidence",
@@ -57,6 +62,7 @@ ID_PATTERN = re.compile(r"^(AND|IOS|BOTH)-([A-Z0-9]{2,6})-(\d{3})$")
 REF_ID_PATTERN = re.compile(r"\b([A-Z]{2,4}-\d{2,3})\b")
 REF_TABLE_ID_PATTERN = re.compile(r"^\|\s*([A-Z]{2,4}-\d{2,3})\s*\|", re.MULTILINE)
 REF_TABLE_ID_LOOSE = re.compile(r"^\|\s*`?([A-Z]{2,4}-\d{2,3})`?\s*\|", re.MULTILINE)
+CWE_PATTERN = re.compile(r"CWE-\d{1,4}")
 
 CODE_CUSTOM = "CUSTOM"
 
@@ -143,6 +149,19 @@ def validate_record(
     if record.get("attacker_model") not in ATTACKER_MODELS:
         report.warn(where, "E-ATTACKER", f"`attacker_model` `{record.get('attacker_model')}` is not valid")
 
+    cwe = record.get("cwe")
+    if not isinstance(cwe, str) or not CWE_PATTERN.fullmatch(cwe):
+        report.warn(where, "E-CWE", f"`cwe` `{cwe}` is not in the form CWE-<number>")
+
+    vector = record.get("cvss_vector")
+    if not isinstance(vector, str):
+        report.warn(where, "E-CVSS", "`cvss_vector` is missing or not a string")
+    else:
+        try:
+            cvss31.parse(vector)
+        except ValueError as exc:
+            report.warn(where, "E-CVSS", f"`cvss_vector` is invalid: {exc}")
+
     ref_ids = record.get("ref_ids") or []
     if not isinstance(ref_ids, list):
         report.warn(where, "E-REFID", "`ref_ids` must be a list")
@@ -188,6 +207,11 @@ def validate_record(
                 "E-CONFIRMED",
                 "`confirmed` needs dynamic evidence, or static evidence with a `notes` justification of why it is unambiguous",
             )
+
+    if status in {"confirmed", "potential", "false-positive"} and final_severity is None:
+        report.warn(where, "E-FINAL", f"status `{status}` requires a `final_severity` set by the orchestrator")
+    elif status in {"candidate", "under-review"} and final_severity is not None:
+        report.warn(where, "E-FINAL", f"status `{status}` has not been through the panel; `final_severity` must be null")
 
     if status not in {"candidate", "under-review", "informational", None} and status in STATUS_VALUES:
         transcript = engagement_root / "exploitation" / f"{finding_id}.md"
@@ -248,6 +272,27 @@ def validate_engagement(engagement_root: Path, report: Report) -> int:
 
 SELF_TEST_CASES = [
     (
+        "candidate with a final_severity set by nobody",
+        {
+            "finding_id": "AND-MAN-007",
+            "title": "t",
+            "agent": "a",
+            "platform": "android",
+            "ref_ids": ["MAN-02"],
+            "masvs": [],
+            "cwe": "CWE-530",
+            "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "category": "x",
+            "attacker_model": "physical",
+            "evidence": [{"type": "static", "detail": "d"}],
+            "severity_initial": "medium",
+            "confidence_initial": "static-only",
+            "status": "candidate",
+            "final_severity": "medium",
+        },
+        {"E-FINAL"},
+    ),
+    (
         "valid candidate",
         {
             "finding_id": "AND-MAN-001",
@@ -256,6 +301,8 @@ SELF_TEST_CASES = [
             "platform": "android",
             "ref_ids": ["MAN-01"],
             "masvs": ["MASVS-RESILIENCE-2"],
+            "cwe": "CWE-489",
+            "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
             "category": "debug-config",
             "component": ".App",
             "sink": "debugger attach",
@@ -269,7 +316,7 @@ SELF_TEST_CASES = [
         set(),
     ),
     (
-        "bad status, bad ref, bad type, bad id",
+        "bad status, bad ref, bad type, bad id, bad cwe and cvss",
         {
             "finding_id": "and-mAN-1",
             "title": "t",
@@ -277,6 +324,8 @@ SELF_TEST_CASES = [
             "platform": "android",
             "ref_ids": ["ZZZ-99"],
             "masvs": [],
+            "cwe": "312",
+            "cvss_vector": "CVSS:3.0/AV:N",
             "category": "x",
             "attacker_model": "remote",
             "evidence": [{"type": "guess", "detail": "d"}],
@@ -285,7 +334,7 @@ SELF_TEST_CASES = [
             "status": "false-positive-candidate",
             "final_severity": None,
         },
-        {"E-ID", "E-STATUS", "E-REFID", "E-EVIDTYPE"},
+        {"E-ID", "E-STATUS", "E-REFID", "E-EVIDTYPE", "E-CWE", "E-CVSS"},
     ),
     (
         "confirmed without transcript or dynamic evidence",
@@ -296,6 +345,8 @@ SELF_TEST_CASES = [
             "platform": "android",
             "ref_ids": ["MAN-02"],
             "masvs": [],
+            "cwe": "CWE-200",
+            "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
             "category": "x",
             "attacker_model": "physical",
             "evidence": [{"type": "static", "detail": "d"}],

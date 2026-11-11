@@ -24,3 +24,11 @@ Thumbs.db
 # Python bytecode from the helper scripts
 __pycache__/
 *.pyc
+
+# App/tool-specific local skills, never published/synced to this repo's remote
+/skills/c6bank/
+/skills/raspilot-rasp/
+/skills/c6-raspilot/
+
+# Local marketplace manifest, not published to this repo's remote
+/.claude-plugin/marketplace.json

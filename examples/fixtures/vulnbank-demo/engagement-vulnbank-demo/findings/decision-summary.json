@@ -1,0 +1,134 @@
+[
+  {
+    "finding_id": "AND-MAN-001",
+    "title": "android:debuggable=\"true\" set explicitly on <application>",
+    "platform": "android",
+    "status": "potential",
+    "severity_initial": "high",
+    "final_severity": "high",
+    "attacker_model": "physical",
+    "cwe": "CWE-489",
+    "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+    "masvs": [
+      "MASVS-RESILIENCE-2"
+    ],
+    "ref_ids": [
+      "MAN-01"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": ".VulnBankApp (application-level attribute)",
+    "cvss_score": 5.9,
+    "transcript": "exploitation/AND-MAN-001.md"
+  },
+  {
+    "finding_id": "AND-MAN-002",
+    "title": "android:allowBackup=\"true\" with no backup-content restriction on a banking app",
+    "platform": "android",
+    "status": "candidate",
+    "severity_initial": "medium",
+    "final_severity": null,
+    "attacker_model": "physical",
+    "cwe": "CWE-530",
+    "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+    "masvs": [
+      "MASVS-STORAGE-2"
+    ],
+    "ref_ids": [
+      "MAN-02"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": ".VulnBankApp (application-level attribute)",
+    "cvss_score": 4.6,
+    "transcript": null
+  },
+  {
+    "finding_id": "AND-MAN-003",
+    "title": "TransferMoneyActivity exported with BROWSABLE custom-scheme deep link and no permission guard",
+    "platform": "android",
+    "status": "potential",
+    "severity_initial": "high",
+    "final_severity": "high",
+    "attacker_model": "remote",
+    "cwe": "CWE-939",
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N",
+    "masvs": [
+      "MASVS-PLATFORM-1",
+      "MASVS-AUTH-1"
+    ],
+    "ref_ids": [
+      "MAN-04",
+      "MAN-09"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": ".ui.TransferMoneyActivity",
+    "cvss_score": 7.1,
+    "transcript": "exploitation/AND-MAN-003.md"
+  },
+  {
+    "finding_id": "AND-MAN-004",
+    "title": "AccountProvider exported with no permission, no path-permission, no URI scoping",
+    "platform": "android",
+    "status": "candidate",
+    "severity_initial": "high",
+    "final_severity": null,
+    "attacker_model": "other-app",
+    "cwe": "CWE-926",
+    "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+    "masvs": [
+      "MASVS-PLATFORM-1",
+      "MASVS-STORAGE-1"
+    ],
+    "ref_ids": [
+      "MAN-04",
+      "MAN-06"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": ".data.AccountProvider",
+    "cvss_score": 7.7,
+    "transcript": null
+  },
+  {
+    "finding_id": "AND-MAN-005",
+    "title": "No <uses-sdk> declared -- min/targetSdkVersion undeclared in this manifest",
+    "platform": "android",
+    "status": "candidate",
+    "severity_initial": "low",
+    "final_severity": null,
+    "attacker_model": "none",
+    "cwe": "CWE-1188",
+    "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:N/I:N/A:N",
+    "masvs": [],
+    "ref_ids": [
+      "MAN-12"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": "manifest-level (no <uses-sdk> element)",
+    "cvss_score": 0.0,
+    "transcript": null
+  },
+  {
+    "finding_id": "AND-MAN-006",
+    "title": "Exported component inventory for this manifest (IPC surface map for downstream specialists)",
+    "platform": "android",
+    "status": "candidate",
+    "severity_initial": "info",
+    "final_severity": null,
+    "attacker_model": "other-app",
+    "cwe": "CWE-1000",
+    "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N",
+    "masvs": [],
+    "ref_ids": [
+      "MAN-04"
+    ],
+    "confidence_initial": "static-only",
+    "agent": "android-manifest-auditor",
+    "component": ".ui.LoginActivity, .ui.TransferMoneyActivity, .data.AccountProvider (all declared components in this manifest)",
+    "cvss_score": 0.0,
+    "transcript": null
+  }
+]

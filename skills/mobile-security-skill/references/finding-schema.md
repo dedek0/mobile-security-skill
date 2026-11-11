@@ -10,6 +10,8 @@ Every specialist agent emits findings in this exact shape so the exploitation pa
   "platform": "android",
   "ref_ids": ["WEB-02", "TNT-06"],
   "masvs": ["MASVS-PLATFORM-2"],
+  "cwe": "CWE-749",
+  "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N",
   "category": "webview",
   "component": "com.example.app.WebActivity",
   "attacker_model": "remote",
@@ -38,11 +40,14 @@ Every specialist agent emits findings in this exact shape so the exploitation pa
 - `evidence[].type`: exactly `static`, `dynamic`, or `poc`. Never add a new type.
 - `ref_ids`: cite every matching ID from `taint-analysis.md`, `advanced-attacks.md`, `clipboard-webview-oauth.md`, `manifest-plist.md`, `storage-crypto.md`. Never invent a finding with no ref ID. If nothing in the reference set matches, say so explicitly and tag `ref_ids: ["CUSTOM"]` with justification in `notes`.
 - `masvs`: best-effort mapping to OWASP MASVS v2 control IDs (MASVS-STORAGE, MASVS-CRYPTO, MASVS-AUTH, MASVS-NETWORK, MASVS-PLATFORM, MASVS-CODE, MASVS-RESILIENCE, MASVS-PRIVACY). Leave `[]` if genuinely unmapped, don't force it.
+- `cwe`: the single most specific CWE for the root cause, in the form `CWE-<number>` (e.g. `CWE-312`, `CWE-927`). Required. If no CWE fits, use `CWE-1000` (the CWE view root for unclassified weaknesses) and say why in `notes`.
+- `cvss_vector`: a CVSS **3.1** base vector, `CVSS:3.1/AV:../AC:../PR:../UI:../S:../C:../I:../A:..`, for the attacker model and impact the finding describes. Required. The score is not stored: `scripts/cvss31.py` computes it from this vector, so the number in the report can always be reproduced. Use the attacker model to set `AV` (`remote` -> `N`, `other-app` -> `L` for IPC on the same device, `physical` -> `P`, `local-root` -> `L` with `PR:H` or `PR:L`, `none` -> the vector that matches the stated impact). The vector describes the attack, not the panel's rating: a vector never changes `status`.
 - `attacker_model`: one of `remote` (any server/network attacker), `other-app` (malicious app on same device, no root), `physical` (attacker has the unlocked/locked device briefly), `local-root` (rooted/jailbroken device or physical+root), `none` (not exploitable by any realistic attacker, informational only). This is the single most important field for the exploitation panel: it is what "Confirmed" is actually confirming reachability *by*.
 - `sanitizer_present` / `sanitizer_notes`: record what mitigation exists even if you believe it's inadequate; the skeptic agent checks this first.
 - `evidence`: append-only list. Static agents add `type: "static"` entries (file:line, decompiled snippet, grep hit). The dynamic-runtime-verifier adds `type: "dynamic"` entries (Frida hook output, logcat/idevicesyslog capture, pcap). The exploitation panel adds `type: "poc"` entries. Never delete evidence; corrections are new entries with `notes` explaining what superseded what.
 - `severity_initial` / `confidence_initial`: the specialist's own best guess (`critical|high|medium|low|info`, `static-only|dynamic-confirmed|theoretical`), set once by the specialist that created the finding and **never overwritten**: it's the audit trail of what the original call was, kept even after the panel rules differently.
 - `status`: `candidate` (fresh from a specialist) -> `under-review` (the orchestrating session sets this the moment it hands a finding to `exploit-verifier-prosecutor`) -> `confirmed` | `potential` | `informational` | `false-positive` (the panel's final call; see `severity-rating.md` for the gate each requires).
+- **Unreadable or missing decision fields.** If a record's `status` is missing, not in the enum, or cannot be read, the record is treated as `candidate` with `final_severity: null`, and the report says so in Appendix C. Never invent a status, and never write "not recoverable" or any other value outside the enum. `scripts/validate_findings.py` flags a `candidate` or `under-review` record that has a `final_severity`, and a `confirmed`, `potential` or `false-positive` record without one.
 - `final_severity` / `final_rating_reason`: **who writes these and when**: the prosecutor and skeptic agents never edit `findings.jsonl` directly (they're scoped to `Read`/`Grep`/`Glob`/`Write`-to-`exploitation/` only, by design, so they can't quietly short-circuit each other). Once every skeptic pass for a finding is in, the **orchestrating session** (the one running `SKILL.md`, i.e. you) reads the finished `exploitation/<finding_id>.md` transcript, applies the decision rule in `severity-rating.md` itself, and writes the resulting `status`, `final_severity` (`critical|high|medium|low|info`, independent of `severity_initial`), and a one-line `final_rating_reason` into this record. This is the only field update step in the whole pipeline the orchestrator does by hand rather than delegating. `SKILL.md`'s Phase 4 says so explicitly. `report-synthesizer` reads `final_severity`/`status` as the authoritative rating; it falls back to `severity_initial` only for findings that skipped the full panel (routed straight to `informational` per `SKILL.md`'s low-severity shortcut).
 
 ## Where findings live
@@ -57,6 +62,9 @@ engagement-<slug>/
 ├── exploitation/
 │   └── <finding_id>.md      # prosecutor case + skeptic rebuttal + verdict
 └── report/
-    └── final-report.md
+    ├── final-report.en.md
+    ├── final-report.en.html
+    ├── final-report.pt-BR.md
+    └── final-report.pt-BR.html
 ```
 Agents append to `findings.jsonl` rather than rewriting it, so parallel specialist runs never clobber each other. The report-synthesizer is the only agent that reads the whole file to dedupe and roll up.
